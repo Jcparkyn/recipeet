@@ -24,13 +24,13 @@ export default function CookingMode() {
   }
 
   const r = recipe()!;
-  const p = progress()!;
+  const currentProgress = () => progress()!;
   const steps = () => r.content.steps;
-  const currentIdx = () => p.currentCookingStep;
+  const currentIdx = () => currentProgress().currentCookingStep;
   const currentStep = () => steps()[currentIdx()];
-  const checkedSteps = () => new Set(p.checkedSteps);
-  const checkedSubsteps = () => new Set(p.checkedSubsteps);
-  const servings = () => p.currentServings;
+  const checkedSteps = () => new Set(currentProgress().checkedSteps);
+  const checkedSubsteps = () => new Set(currentProgress().checkedSubsteps);
+  const servings = () => currentProgress().currentServings;
 
   const stepChecked = createMemo(() => checkedSteps().has(currentStep()?.id ?? ''));
 
@@ -126,8 +126,6 @@ export default function CookingMode() {
     );
   }
 
-  const step = currentStep();
-
   return (
     <div class={styles.page}>
       <header class={styles.header}>
@@ -158,11 +156,11 @@ export default function CookingMode() {
             >
               {stepChecked() ? '✓' : '○'}
             </button>
-            <h2 class={styles.stepTitle}>{step.title}</h2>
+            <h2 class={styles.stepTitle}>{currentStep()?.title}</h2>
           </div>
 
           <ul class={styles.substeps}>
-            {step.substeps.map((sub) => {
+            {currentStep()?.substeps.map((sub) => {
               const checked = checkedSubsteps().has(sub.id);
               return (
                 <li class={styles.substep}>
