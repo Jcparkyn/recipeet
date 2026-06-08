@@ -1,0 +1,220 @@
+export const VOLUME_TO_ML: Record<string, number> = {
+  tsp: 5,
+  tbsp: 15,
+  fl_oz: 30,
+  cup: 240,
+  pint: 480,
+  quart: 960,
+  gallon: 3840,
+  ml: 1,
+  l: 1000,
+};
+
+export const WEIGHT_TO_G: Record<string, number> = {
+  g: 1,
+  kg: 1000,
+  oz: 28.35,
+  lb: 453.6,
+};
+
+const DENSITIES: Record<string, number> = {
+  'all-purpose flour': 0.53,
+  'plain flour': 0.53,
+  flour: 0.53,
+  'bread flour': 0.55,
+  'whole wheat flour': 0.53,
+  'granulated sugar': 0.85,
+  'white sugar': 0.85,
+  sugar: 0.85,
+  'caster sugar': 0.85,
+  'brown sugar': 0.82,
+  'powdered sugar': 0.56,
+  'icing sugar': 0.56,
+  'confectioners sugar': 0.56,
+  butter: 0.96,
+  margarine: 0.96,
+  shortening: 0.85,
+  'vegetable oil': 0.92,
+  'olive oil': 0.92,
+  'canola oil': 0.92,
+  'sunflower oil': 0.92,
+  oil: 0.92,
+  honey: 1.42,
+  'maple syrup': 1.37,
+  'golden syrup': 1.42,
+  'corn syrup': 1.38,
+  molasses: 1.42,
+  milk: 1.03,
+  'heavy cream': 1.01,
+  'double cream': 1.01,
+  'whipping cream': 1.01,
+  cream: 1.01,
+  'sour cream': 1.02,
+  'cream cheese': 1.02,
+  yogurt: 1.05,
+  'greek yogurt': 1.05,
+  water: 1.0,
+  salt: 1.2,
+  'table salt': 1.2,
+  'kosher salt': 0.9,
+  'sea salt': 1.1,
+  'baking powder': 0.9,
+  'baking soda': 0.9,
+  'bicarbonate of soda': 0.9,
+  'cocoa powder': 0.5,
+  'cacao powder': 0.5,
+  cornstarch: 0.5,
+  cornflour: 0.5,
+  'rice (uncooked)': 0.85,
+  rice: 0.85,
+  'basmati rice': 0.85,
+  'jasmine rice': 0.85,
+  oats: 0.4,
+  'rolled oats': 0.4,
+  'porridge oats': 0.4,
+  'peanut butter': 1.3,
+  'almond butter': 1.25,
+  tahini: 1.15,
+  'tomato paste': 1.1,
+  'tomato puree': 1.1,
+  mayonnaise: 0.95,
+  ketchup: 1.05,
+  mustard: 1.05,
+  'soy sauce': 1.1,
+  'fish sauce': 1.05,
+  'worcestershire sauce': 1.05,
+  vinegar: 1.0,
+  'balsamic vinegar': 1.05,
+  'apple cider vinegar': 1.0,
+  'rice vinegar': 1.0,
+  'white wine': 1.0,
+  'red wine': 1.0,
+  'coconut milk': 1.02,
+  'almond milk': 1.0,
+  'oat milk': 1.01,
+  'soy milk': 1.02,
+  'sesame oil': 0.92,
+  'coconut oil': 0.92,
+  lard: 0.9,
+  suet: 0.85,
+  'shredded cheese': 0.45,
+  'grated cheese': 0.45,
+  'parmesan (grated)': 0.45,
+  'cheddar (grated)': 0.45,
+  'bread crumbs': 0.4,
+  panko: 0.25,
+  'almond flour': 0.5,
+  'ground almonds': 0.5,
+  'corn meal': 0.6,
+  polenta: 0.6,
+  semolina: 0.6,
+  'powdered milk': 0.45,
+  'milk powder': 0.45,
+  'protein powder': 0.45,
+  'instant yeast': 0.6,
+  'active dry yeast': 0.65,
+  'fresh yeast': 1.0,
+  gelatin: 0.6,
+  'gelatin powder': 0.6,
+  agar: 0.55,
+};
+
+export function lookupDensity(name: string): number | undefined {
+  const key = name.toLowerCase().trim();
+  if (DENSITIES[key]) return DENSITIES[key];
+  for (const [known, density] of Object.entries(DENSITIES)) {
+    if (key.includes(known) || known.includes(key)) return density;
+  }
+  return undefined;
+}
+
+export function isVolumeUnit(unit: string): boolean {
+  return unit in VOLUME_TO_ML;
+}
+
+export function isWeightUnit(unit: string): boolean {
+  return unit in WEIGHT_TO_G;
+}
+
+export interface Conversion {
+  unit: string;
+  value: number;
+  label: string;
+}
+
+export function getConversions(
+  quantity: number,
+  unit: string,
+  ingredientName?: string,
+): Conversion[] {
+  const results: Conversion[] = [];
+  const unitLower = unit.toLowerCase().trim();
+
+  if (unitLower in VOLUME_TO_ML) {
+    const ml = quantity * VOLUME_TO_ML[unitLower];
+    results.push({ unit: 'ml', value: round(ml), label: `${round(ml)} ml` });
+    if (ml >= 1000) {
+      results.push({ unit: 'l', value: round(ml / 1000), label: `${round(ml / 1000)} l` });
+    }
+    for (const [u, factor] of Object.entries(VOLUME_TO_ML)) {
+      if (u === unitLower || u === 'ml' || u === 'l') continue;
+      if (u === 'gallon' && ml < 1000) continue;
+      if (u === 'quart' && ml < 200) continue;
+      if (u === 'pint' && ml < 100) continue;
+      results.push({ unit: u, value: round(ml / factor), label: `${round(ml / factor)} ${u}` });
+    }
+    if (ingredientName) {
+      const density = lookupDensity(ingredientName);
+      if (density) {
+        const g = ml * density;
+        results.push({ unit: 'g', value: round(g), label: `${round(g)} g` });
+        if (g >= 1000)
+          results.push({ unit: 'kg', value: round(g / 1000), label: `${round(g / 1000)} kg` });
+        for (const [u, factor] of Object.entries(WEIGHT_TO_G)) {
+          if (u === 'g' || u === 'kg') continue;
+          if (u === 'lb' && g < 50) continue;
+          results.push({ unit: u, value: round(g / factor), label: `${round(g / factor)} ${u}` });
+        }
+      }
+    }
+  } else if (unitLower in WEIGHT_TO_G) {
+    const g = quantity * WEIGHT_TO_G[unitLower];
+    results.push({ unit: 'g', value: round(g), label: `${round(g)} g` });
+    if (g >= 1000)
+      results.push({ unit: 'kg', value: round(g / 1000), label: `${round(g / 1000)} kg` });
+    for (const [u, factor] of Object.entries(WEIGHT_TO_G)) {
+      if (u === 'g' || u === 'kg' || u === unitLower) continue;
+      if (u === 'lb' && g < 50) continue;
+      results.push({ unit: u, value: round(g / factor), label: `${round(g / factor)} ${u}` });
+    }
+    if (ingredientName) {
+      const density = lookupDensity(ingredientName);
+      if (density) {
+        const ml = g / density;
+        results.push({ unit: 'ml', value: round(ml), label: `${round(ml)} ml` });
+        if (ml >= 1000)
+          results.push({ unit: 'l', value: round(ml / 1000), label: `${round(ml / 1000)} l` });
+        for (const [u, factor] of Object.entries(VOLUME_TO_ML)) {
+          if (u === 'ml' || u === 'l') continue;
+          results.push({
+            unit: u,
+            value: round(ml / factor),
+            label: `${round(ml / factor)} ${u}`,
+          });
+        }
+      }
+    }
+  }
+
+  const seen = new Set<string>();
+  return results.filter((c) => {
+    if (c.label === `${quantity} ${unitLower}`) return false;
+    if (seen.has(c.unit)) return false;
+    seen.add(c.unit);
+    return true;
+  });
+}
+
+function round(n: number): number {
+  return Math.round(n * 100) / 100;
+}
