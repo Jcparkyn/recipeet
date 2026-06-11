@@ -63,8 +63,14 @@ export function addRecipe(recipe: Recipe) {
 }
 
 export function removeRecipe(id: string) {
-  setRecipes(produce((r) => r.filter((p) => p.id !== id)));
-  setProgress(produce((p) => p.filter((p) => p.recipeId !== id)));
+  setRecipes(produce((r) => {
+    const idx = r.findIndex((recipe) => recipe.id === id);
+    if (idx !== -1) r.splice(idx, 1);
+  }));
+  setProgress(produce((p) => {
+    const idx = p.findIndex((prog) => prog.recipeId === id);
+    if (idx !== -1) p.splice(idx, 1);
+  }));
   persistRecipes();
   persistProgress();
 }
