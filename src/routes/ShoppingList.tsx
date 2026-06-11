@@ -2,7 +2,7 @@ import { createMemo, createSignal } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, updateProgress } from '@/lib/storage';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '@/lib/types';
-import type { Ingredient, ShoppingCategory } from '@/lib/types';
+import type { Ingredient, ShoppingCategory, Recipe, RecipeProgress } from '@/lib/types';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
 import ConversionPopover from '@/components/ConversionPopover';
 import styles from './ShoppingList.module.css';
@@ -19,11 +19,11 @@ interface GroupedIngredient {
 export default function ShoppingList() {
   const params = useParams();
   const navigate = useNavigate();
+  const recipeId = params.id ?? '';
 
-  const recipe = () => recipes.find((r) => r.id === params.id!);
-  const progress = () => getProgress(params.id!);
-
-  if (!recipe() || !progress()) {
+  const found = recipes.find((x) => x.id === recipeId);
+  const progress = getProgress(recipeId);
+  if (!found || !progress) {
     return (
       <div class={styles.page}>
         <p>Recipe not found</p>
@@ -31,9 +31,9 @@ export default function ShoppingList() {
       </div>
     );
   }
+  const r: Recipe = found;
+  const p: RecipeProgress = progress;
 
-  const r = recipe()!;
-  const p = progress()!;
   const servings = () => p.currentServings;
 
   const grouped = createMemo(() => groupIngredients(r.content.ingredients, servings(), r.content.originalServings));
@@ -200,8 +200,8 @@ function groupIngredients(
   for (const ing of ingredients) {
     const key = `${ing.name.toLowerCase().trim()}|${ing.unit.toLowerCase().trim()}`;
     const scaled = scaleQuantity(ing.quantity, originalServings, targetServings);
-    if (map.has(key)) {
-      const existing = map.get(key)!;
+    const existing = map.get(key);
+    if (existing) {
       existing.quantity += scaled;
       existing.ids.push(ing.id);
     } else {

@@ -1,23 +1,21 @@
 import { createMemo, createSignal, Show, For } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, updateProgress } from '@/lib/storage';
-import { scaleQuantity, formatQuantity } from '@/lib/scaling';
-import type { SubStep } from '@/lib/types';
 import styles from './CookingMode.module.css';
 
 export default function CookingMode() {
   const params = useParams();
   const navigate = useNavigate();
+  const recipeId = params.id ?? '';
 
-  const recipe = createMemo(() => recipes.find((r) => r.id === params.id!));
-  const progress = createMemo(() => getProgress(params.id!));
+  const recipe = createMemo(() => recipes.find((r) => r.id === recipeId));
+  const progress = createMemo(() => getProgress(recipeId));
 
   const steps = createMemo(() => recipe()?.content.steps ?? []);
   const currentIdx = createMemo(() => progress()?.currentCookingStep ?? 0);
   const currentStep = createMemo(() => steps()[currentIdx()]);
   const checkedSteps = createMemo(() => new Set(progress()?.checkedSteps));
   const checkedSubsteps = createMemo(() => new Set(progress()?.checkedSubsteps));
-  const servings = createMemo(() => progress()?.currentServings ?? 0);
 
   const stepChecked = createMemo(() => checkedSteps().has(currentStep()?.id ?? ''));
 
@@ -29,7 +27,11 @@ export default function CookingMode() {
     const p = progress();
     if (!p) return;
     const current = new Set(p.checkedSubsteps);
-    current.has(subId) ? current.delete(subId) : current.add(subId);
+    if (current.has(subId)) {
+      current.delete(subId);
+    } else {
+      current.add(subId);
+    }
     updateProgress(p.recipeId, { checkedSubsteps: [...current] });
   }
 
@@ -73,8 +75,6 @@ export default function CookingMode() {
     goTo(currentIdx() - 1);
   }
 
-  const r = createMemo(() => recipe()!);
-
   const notFound = (
     <div class={styles.page}>
       <p>Recipe not found</p>
@@ -87,7 +87,7 @@ export default function CookingMode() {
       <Show when={completed()} fallback={
         <div class={styles.page}>
           <header class={styles.header}>
-            <button class={styles.back} onClick={() => navigate(`/recipe/${r().id}`)} aria-label="Back">
+            <button class={styles.back} onClick={() => navigate(`/recipe/${recipe()?.id ?? ''}`)} aria-label="Back">
               ←
             </button>
             <div class={styles.headerCenter}>
@@ -179,10 +179,10 @@ export default function CookingMode() {
         <div class={styles.donePage}>
           <div class={styles.doneContent}>
             <h1>Done!</h1>
-            <p>You finished cooking {r().content.title}</p>
+            <p>You finished cooking {recipe()?.content.title ?? ''}</p>
             <button
               class={styles.doneBtn}
-              onClick={() => navigate(`/recipe/${r().id}`)}
+              onClick={() => navigate(`/recipe/${recipe()?.id ?? ''}`)}
             >
               Back to recipe
             </button>

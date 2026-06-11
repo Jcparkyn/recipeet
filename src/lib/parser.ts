@@ -90,7 +90,7 @@ function validateAndTransform(raw: Record<string, unknown>): ParseResult {
     throw new Error('Recipe is missing steps');
   }
 
-  const ingredients = raw.ingredients.map((ing: Record<string, unknown>, i: number) => ({
+  const ingredients = raw.ingredients.map((ing: Record<string, unknown>) => ({
     id: crypto.randomUUID(),
     name: String(ing.name || ''),
     quantity: Number(ing.quantity) || 0,

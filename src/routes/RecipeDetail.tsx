@@ -7,11 +7,10 @@ import styles from './RecipeDetail.module.css';
 export default function RecipeDetail() {
   const params = useParams();
   const navigate = useNavigate();
+  const recipeId = params.id ?? '';
 
-  const recipe = () => recipes.find((r) => r.id === params.id!);
-  const progress = () => getProgress(params.id!);
-
-  if (!recipe()) {
+  const maybeRecipe = recipes.find((x) => x.id === recipeId);
+  if (!maybeRecipe) {
     return (
       <div class={styles.page}>
         <p>Recipe not found</p>
@@ -19,18 +18,17 @@ export default function RecipeDetail() {
       </div>
     );
   }
-
-  const r = recipe()!;
-  const p = progress();
-  const servings = () => p?.currentServings ?? r.content.originalServings;
+  const recipe = maybeRecipe;
+  const p = getProgress(recipeId);
+  const servings = () => p?.currentServings ?? recipe.content.originalServings;
 
   function setServings(n: number) {
-    updateProgress(r.id, { currentServings: n });
+    updateProgress(recipe.id, { currentServings: n });
   }
 
   function handleDelete() {
     if (confirm('Delete this recipe?')) {
-      removeRecipe(r.id);
+      removeRecipe(recipe.id);
       navigate('/');
     }
   }
@@ -42,8 +40,8 @@ export default function RecipeDetail() {
           ←
         </button>
         <div class={styles.headerInfo}>
-          <h1 class={styles.title}>{r.content.title}</h1>
-          {r.sourceUrl && <span class={styles.source}>{r.sourceUrl}</span>}
+          <h1 class={styles.title}>{recipe.content.title}</h1>
+          {recipe.sourceUrl && <span class={styles.source}>{recipe.sourceUrl}</span>}
         </div>
         <button class={styles.deleteBtn} onClick={handleDelete} aria-label="Delete">
           🗑
@@ -55,11 +53,11 @@ export default function RecipeDetail() {
 
         <section>
           <h2 class={styles.sectionTitle}>
-            Ingredients ({r.content.ingredients.length})
+            Ingredients ({recipe.content.ingredients.length})
           </h2>
           <ul class={styles.ingredientList}>
-            {r.content.ingredients.map((ing) => {
-              const qty = scaleQuantity(ing.quantity, r.content.originalServings, servings());
+            {recipe.content.ingredients.map((ing) => {
+              const qty = scaleQuantity(ing.quantity, recipe.content.originalServings, servings());
               return (
                 <li class={styles.ingredient}>
                   <span class={styles.ingName}>{ing.name}</span>
@@ -73,9 +71,9 @@ export default function RecipeDetail() {
         </section>
 
         <section>
-          <h2 class={styles.sectionTitle}>Steps ({r.content.steps.length})</h2>
+          <h2 class={styles.sectionTitle}>Steps ({recipe.content.steps.length})</h2>
           <ol class={styles.stepList}>
-            {r.content.steps.map((step) => (
+            {recipe.content.steps.map((step) => (
               <li class={styles.step}>{step.title}</li>
             ))}
           </ol>
@@ -86,13 +84,13 @@ export default function RecipeDetail() {
         <button
           class={styles.btn}
           classList={{ [styles.secondary]: true }}
-          onClick={() => navigate(`/recipe/${r.id}/shop`)}
+          onClick={() => navigate(`/recipe/${recipe.id}/shop`)}
         >
           Shopping List
         </button>
         <button
           class={styles.btn}
-          onClick={() => navigate(`/recipe/${r.id}/cook`)}
+          onClick={() => navigate(`/recipe/${recipe.id}/cook`)}
         >
           Start Cooking
         </button>
