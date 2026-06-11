@@ -74,7 +74,10 @@ export default function RecipeDetail() {
           <h2 class={styles.sectionTitle}>Steps ({recipe.content.steps.length})</h2>
           <ol class={styles.stepList}>
             {recipe.content.steps.map((step) => (
-              <li class={styles.step}>{step.title}</li>
+              <li class={styles.step}>
+                <span class={styles.stepTitle}>{step.title}</span>
+                {step.notes && <span class={styles.stepNotes}>{step.notes}</span>}
+              </li>
             ))}
           </ol>
         </section>

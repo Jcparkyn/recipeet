@@ -110,6 +110,16 @@
   padding: 6px 0;
 }
 
+.stepTitle {
+  font-weight: 500;
+}
+
+.stepNotes {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  color: #999;
+}
+
 .footer {
   display: flex;
   gap: 12px;

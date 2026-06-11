@@ -22,6 +22,7 @@ const SYSTEM_PROMPT = `You are a recipe parser. Given unstructured recipe text, 
     {
       "title": string,
       "order": number,
+      "notes"?: string,
       "substeps": [
         { "instruction": string, "linkedIngredients"?: [{ "ingredientIndex": number, "quantity": number, "unit": string }] }
       ]
@@ -30,14 +31,16 @@ const SYSTEM_PROMPT = `You are a recipe parser. Given unstructured recipe text, 
 }
 
 Rules:
-1. Reorder steps: prep work (chopping, measuring, marinating) before cooking steps.
-2. Time-sensitive prep (e.g. "cut meat before it goes in a hot pan") gets its own step BEFORE the cooking step that needs it.
-3. Non-urgent measuring (e.g. "add 1 tsp paprika to sauce") stays inline in the cooking substep.
-4. Every substep instruction must use [[ing:N]] markers where an ingredient is used (N = zero-based index in ingredients[]). Do NOT write the ingredient name or quantity in the instruction text — the [[ing:N]] marker replaces it entirely. Example: "Dice [[ing:0]] into small cubes" not "Dice 2 onions into small cubes".
-5. Categorize each ingredient.
-6. Default to 4 servings if not specified.
-7. Convert fractions to decimals (0.5 not 1/2).
-8. linkedIngredients[].ingredientIndex refers to zero-based index in ingredients[].
+1. Estimate how long each step takes and include it in the "notes" field. Examples: "notes": "~20 minutes", "notes": "Preheat takes 15-20 min — start early", "notes": "~5 minutes". If a step has no significant time requirement, leave notes as an empty string or omit it.
+2. Reorder steps so that long-running background tasks (e.g. preheating oven, bringing water to a boil, marinating) start BEFORE shorter prep steps like chopping and measuring. The goal is that by the time the food is ready to go in, the oven is already hot or the water is already boiling.
+3. Prep work (chopping, measuring, marinating) should still come before cooking steps that depend on them.
+4. Time-sensitive prep (e.g. "cut meat before it goes in a hot pan") gets its own step BEFORE the cooking step that needs it.
+5. Non-urgent measuring (e.g. "add 1 tsp paprika to sauce") stays inline in the cooking substep.
+6. Every substep instruction must use [[ing:N]] markers where an ingredient is used (N = zero-based index in ingredients[]). Do NOT write the ingredient name or quantity in the instruction text — the [[ing:N]] marker replaces it entirely. Example: "Dice [[ing:0]] into small cubes" not "Dice 2 onions into small cubes".
+7. Categorize each ingredient.
+8. Default to 4 servings if not specified.
+9. Convert fractions to decimals (0.5 not 1/2).
+10. linkedIngredients[].ingredientIndex refers to zero-based index in ingredients[].
 
 Return only valid JSON, no markdown fences, no extra text.`;
 
@@ -105,6 +108,7 @@ function validateAndTransform(raw: Record<string, unknown>): ParseResult {
     id: crypto.randomUUID(),
     title: String(step.title || `Step ${si + 1}`),
     order: typeof step.order === 'number' ? step.order : si,
+    notes: step.notes ? String(step.notes) : undefined,
     substeps: Array.isArray(step.substeps)
       ? step.substeps.map((sub: Record<string, unknown>) => {
           const linkedIngredients: LinkedIngredient[] | undefined = Array.isArray(sub.linkedIngredients)
