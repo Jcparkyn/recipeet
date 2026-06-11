@@ -8,7 +8,6 @@ export default function RecipeDetail() {
   const params = useParams();
   const navigate = useNavigate();
   const ctx = useRecipes();
-  if (!ctx) return null;
 
   const recipe = () => ctx.recipes.find((r) => r.id === params.id);
   const progress = () => ctx.getProgress(params.id);
@@ -27,12 +26,12 @@ export default function RecipeDetail() {
   const servings = () => p?.currentServings ?? r.content.originalServings;
 
   function setServings(n: number) {
-    ctx!.updateProgress(r.id, { currentServings: n });
+    ctx.updateProgress(r.id, { currentServings: n });
   }
 
   function handleDelete() {
     if (confirm('Delete this recipe?')) {
-      ctx!.removeRecipe(r.id);
+      ctx.removeRecipe(r.id);
       navigate('/');
     }
   }

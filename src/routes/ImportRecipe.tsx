@@ -9,7 +9,6 @@ import styles from './ImportRecipe.module.css';
 export default function ImportRecipe() {
   const navigate = useNavigate();
   const ctx = useRecipes();
-  if (!ctx) return null;
 
   const [tab, setTab] = createSignal<'paste' | 'url'>('paste');
   const [text, setText] = createSignal('');
@@ -42,7 +41,7 @@ export default function ImportRecipe() {
     setLoading(true);
     setError('');
     try {
-      const settings = ctx!.settings();
+      const settings = ctx.settings();
       if (!settings.apiKey) {
         setError('Please set your API key in Settings first');
         setLoading(false);
@@ -57,7 +56,7 @@ export default function ImportRecipe() {
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
-      ctx!.addRecipe(recipe);
+      ctx.addRecipe(recipe);
       navigate(`/recipe/${recipe.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Parsing failed');

@@ -20,7 +20,6 @@ export default function ShoppingList() {
   const params = useParams();
   const navigate = useNavigate();
   const ctx = useRecipes();
-  if (!ctx) return null;
 
   const recipe = () => ctx.recipes.find((r) => r.id === params.id);
   const progress = () => ctx.getProgress(params.id);
@@ -51,7 +50,7 @@ export default function ShoppingList() {
     } else {
       current.add(id);
     }
-    ctx!.updateProgress(r.id, { checkedShoppingItems: [...current] });
+    ctx.updateProgress(r.id, { checkedShoppingItems: [...current] });
   }
 
   function toggleCategory(ingredients: GroupedIngredient[]) {
@@ -66,7 +65,7 @@ export default function ShoppingList() {
         }
       }
     }
-    ctx!.updateProgress(r.id, { checkedShoppingItems: [...current] });
+    ctx.updateProgress(r.id, { checkedShoppingItems: [...current] });
   }
 
   const cats = () => {

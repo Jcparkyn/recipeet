@@ -6,7 +6,6 @@ import styles from './RecipeList.module.css';
 export default function RecipeList() {
   const navigate = useNavigate();
   const ctx = useRecipes();
-  if (!ctx) return null;
   const { recipes } = ctx;
 
   return (

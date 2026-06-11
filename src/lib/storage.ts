@@ -16,78 +16,67 @@ function loadJson<T>(key: string, fallback: T): T {
   }
 }
 
-function saveJson(key: string, value: unknown) {
-  localStorage.setItem(key, JSON.stringify(value));
+export const [recipes, setRecipes] = createStore<Recipe[]>(
+  loadJson(RECIPES_KEY, []),
+);
+
+export const [progresses, setProgress] = createStore<RecipeProgress[]>(
+  loadJson(PROGRESS_KEY, []),
+);
+
+export const [settings, setSettings] = createSignal<LLMSettings>(
+  loadJson(SETTINGS_KEY, DEFAULT_LLM_SETTINGS),
+);
+
+export function persistRecipes() {
+  localStorage.setItem(RECIPES_KEY, JSON.stringify(recipes));
 }
 
-export function createRecipeStore() {
-  const [recipes, setRecipes] = createStore<Recipe[]>(loadJson(RECIPES_KEY, []));
-  const [progresses, setProgress] = createStore<RecipeProgress[]>(loadJson(PROGRESS_KEY, []));
-  const [settings, setSettingsStore] = createSignal<LLMSettings>(
-    loadJson(SETTINGS_KEY, DEFAULT_LLM_SETTINGS),
-  );
+export function persistProgress() {
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(progresses));
+}
 
-  function sync() {
-    saveJson(RECIPES_KEY, recipes);
-    saveJson(PROGRESS_KEY, progresses);
-  }
+export function persistSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings()));
+}
 
-  function addRecipe(recipe: Recipe) {
-    setRecipes([recipe, ...recipes]);
-    const progress: RecipeProgress = {
+export function addRecipe(recipe: Recipe) {
+  setRecipes([recipe, ...recipes]);
+  setProgress([
+    {
       recipeId: recipe.id,
       currentServings: recipe.content.originalServings,
       checkedShoppingItems: [],
       checkedSteps: [],
       checkedSubsteps: [],
       currentCookingStep: 0,
-    };
-    setProgress([progress, ...progresses]);
-    sync();
-  }
+    },
+    ...progresses,
+  ]);
+}
 
-  function removeRecipe(id: string) {
-    setRecipes(produce((r) => r.filter((p) => p.id !== id)));
-    setProgress(produce((p) => p.filter((p) => p.recipeId !== id)));
-    sync();
-  }
+export function removeRecipe(id: string) {
+  setRecipes(produce((r) => r.filter((p) => p.id !== id)));
+  setProgress(produce((p) => p.filter((p) => p.recipeId !== id)));
+}
 
-  function getProgress(recipeId: string): RecipeProgress | undefined {
-    return progresses.find((p) => p.recipeId === recipeId);
-  }
+export function getProgress(recipeId: string): RecipeProgress | undefined {
+  return progresses.find((p) => p.recipeId === recipeId);
+}
 
-  function updateProgress(recipeId: string, patch: Partial<RecipeProgress>) {
-    setProgress(
-      produce((p) => {
-        const idx = p.findIndex((x) => x.recipeId === recipeId);
-        if (idx !== -1) Object.assign(p[idx], patch);
-        else if (patch.recipeId) p.push(patch as RecipeProgress);
-      }),
-    );
-    sync();
-  }
+export function updateProgress(recipeId: string, patch: Partial<RecipeProgress>) {
+  setProgress(
+    produce((p) => {
+      const idx = p.findIndex((x) => x.recipeId === recipeId);
+      if (idx !== -1) Object.assign(p[idx], patch);
+      else if (patch.recipeId) p.push(patch as RecipeProgress);
+    }),
+  );
+}
 
-  function setSettings(s: LLMSettings) {
-    setSettingsStore(s);
-    saveJson(SETTINGS_KEY, s);
-  }
-
-  function clearAll() {
-    localStorage.removeItem(RECIPES_KEY);
-    localStorage.removeItem(PROGRESS_KEY);
-    setRecipes([]);
-    setProgress([]);
-  }
-
-  return {
-    recipes,
-    progresses,
-    settings,
-    addRecipe,
-    removeRecipe,
-    getProgress,
-    updateProgress,
-    setSettings,
-    clearAll,
-  };
+export function clearAll() {
+  localStorage.removeItem(RECIPES_KEY);
+  localStorage.removeItem(PROGRESS_KEY);
+  setRecipes([]);
+  setProgress([]);
 }

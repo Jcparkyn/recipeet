@@ -1,4 +1,4 @@
-import { createMemo, createSignal } from 'solid-js';
+import { createMemo, createSignal, Show, For } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import { useRecipes } from '@/lib/store';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
@@ -9,53 +9,37 @@ export default function CookingMode() {
   const params = useParams();
   const navigate = useNavigate();
   const ctx = useRecipes();
-  if (!ctx) return null;
 
-  const recipe = () => ctx.recipes.find((r) => r.id === params.id);
-  const progress = () => ctx.getProgress(params.id);
+  const recipe = createMemo(() => ctx.recipes.find((r) => r.id === params.id));
+  const progress = createMemo(() => ctx.getProgress(params.id));
 
-  if (!recipe() || !progress()) {
-    return (
-      <div class={styles.page}>
-        <p>Recipe not found</p>
-        <button onClick={() => navigate('/')}>Go back</button>
-      </div>
-    );
-  }
-
-  const r = recipe()!;
-  const currentProgress = () => progress()!;
-  const steps = () => r.content.steps;
-  const currentIdx = () => currentProgress().currentCookingStep;
-  const currentStep = () => steps()[currentIdx()];
-  const checkedSteps = () => new Set(currentProgress().checkedSteps);
-  const checkedSubsteps = () => new Set(currentProgress().checkedSubsteps);
-  const servings = () => currentProgress().currentServings;
+  const steps = createMemo(() => recipe()?.content.steps ?? []);
+  const currentIdx = createMemo(() => progress()?.currentCookingStep ?? 0);
+  const currentStep = createMemo(() => steps()[currentIdx()]);
+  const checkedSteps = createMemo(() => new Set(progress()?.checkedSteps));
+  const checkedSubsteps = createMemo(() => new Set(progress()?.checkedSubsteps));
+  const servings = createMemo(() => progress()?.currentServings ?? 0);
 
   const stepChecked = createMemo(() => checkedSteps().has(currentStep()?.id ?? ''));
 
-  const allSubstepsChecked = createMemo(() => {
-    const step = currentStep();
-    if (!step) return false;
-    if (step.substeps.length === 0) return stepChecked();
-    return step.substeps.every((s) => checkedSubsteps().has(s.id));
-  });
+  const isLastStep = createMemo(() => currentIdx() >= steps().length - 1);
+  const isFirstStep = createMemo(() => currentIdx() <= 0);
+  const [completed, setCompleted] = createSignal(false);
 
   function toggleSubstep(subId: string) {
-    const current = new Set(checkedSubsteps());
-    if (current.has(subId)) {
-      current.delete(subId);
-    } else {
-      current.add(subId);
-    }
-    ctx!.updateProgress(r.id, { checkedSubsteps: [...current] });
+    const p = progress();
+    if (!p) return;
+    const current = new Set(p.checkedSubsteps);
+    current.has(subId) ? current.delete(subId) : current.add(subId);
+    ctx.updateProgress(p.recipeId, { checkedSubsteps: [...current] });
   }
 
   function toggleStep() {
-    const currentSteps = new Set(checkedSteps());
-    const currentSubs = new Set(checkedSubsteps());
+    const p = progress();
     const step = currentStep();
-    if (!step) return;
+    if (!p || !step) return;
+    const currentSteps = new Set(p.checkedSteps);
+    const currentSubs = new Set(p.checkedSubsteps);
 
     if (currentSteps.has(step.id)) {
       currentSteps.delete(step.id);
@@ -65,19 +49,16 @@ export default function CookingMode() {
       for (const sub of step.substeps) currentSubs.add(sub.id);
     }
 
-    ctx!.updateProgress(r.id, {
+    ctx.updateProgress(p.recipeId, {
       checkedSteps: [...currentSteps],
       checkedSubsteps: [...currentSubs],
     });
   }
 
-  const isLastStep = () => currentIdx() >= steps().length - 1;
-  const isFirstStep = () => currentIdx() <= 0;
-  const [completed, setCompleted] = createSignal(false);
-
   function goTo(idx: number) {
-    if (idx >= 0 && idx < steps().length) {
-      ctx!.updateProgress(r.id, { currentCookingStep: idx });
+    const r = recipe();
+    if (r && idx >= 0 && idx < r.content.steps.length) {
+      ctx.updateProgress(r.id, { currentCookingStep: idx });
     }
   }
 
@@ -93,125 +74,122 @@ export default function CookingMode() {
     goTo(currentIdx() - 1);
   }
 
-  function getScaledQuantity(sub: SubStep): string {
-    if (!sub.linkedIngredients || sub.linkedIngredients.length === 0) return '';
-    return sub.linkedIngredients
-      .map((li) => {
-        const ing = r.content.ingredients.find((i) => i.id === li.ingredientId);
-        if (!ing) return `${formatQuantity(li.quantity)} ${li.unit}`;
-        const scaled = scaleQuantity(
-          ing.quantity,
-          r.content.originalServings,
-          servings(),
-        );
-        return `${formatQuantity(scaled)} ${ing.unit}`;
-      })
-      .join(', ');
-  }
+  const r = createMemo(() => recipe()!);
 
-  if (completed()) {
-    return (
-      <div class={styles.donePage}>
-        <div class={styles.doneContent}>
-          <h1>Done!</h1>
-          <p>You finished cooking {r.content.title}</p>
-          <button
-            class={styles.doneBtn}
-            onClick={() => navigate(`/recipe/${r.id}`)}
-          >
-            Back to recipe
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const notFound = (
+    <div class={styles.page}>
+      <p>Recipe not found</p>
+      <button onClick={() => navigate('/')}>Go back</button>
+    </div>
+  );
 
   return (
-    <div class={styles.page}>
-      <header class={styles.header}>
-        <button class={styles.back} onClick={() => navigate(`/recipe/${r.id}`)} aria-label="Back">
-          ←
-        </button>
-        <div class={styles.headerCenter}>
-          <span class={styles.stepCount}>
-            Step {currentIdx() + 1} of {steps().length}
-          </span>
-          <div class={styles.progressBar}>
-            <div
-              class={styles.progressFill}
-              style={{ width: `${((currentIdx() + 1) / steps().length) * 100}%` }}
-            />
-          </div>
-        </div>
-        <div class={styles.spacer} />
-      </header>
-
-      <main class={styles.main}>
-        <div class={styles.stepCard}>
-          <div class={styles.stepHeader} onClick={toggleStep}>
-            <button
-              class={styles.stepCheck}
-              classList={{ [styles.checked]: stepChecked() }}
-              aria-label={stepChecked() ? 'Uncheck step' : 'Check step'}
-            >
-              {stepChecked() ? '✓' : '○'}
+    <Show when={recipe() && progress()} fallback={notFound}>
+      <Show when={completed()} fallback={
+        <div class={styles.page}>
+          <header class={styles.header}>
+            <button class={styles.back} onClick={() => navigate(`/recipe/${r().id}`)} aria-label="Back">
+              ←
             </button>
-            <h2 class={styles.stepTitle}>{currentStep()?.title}</h2>
-          </div>
+            <div class={styles.headerCenter}>
+              <span class={styles.stepCount}>
+                Step {currentIdx() + 1} of {steps().length}
+              </span>
+              <div class={styles.progressBar}>
+                <div
+                  class={styles.progressFill}
+                  style={{ width: `${((currentIdx() + 1) / steps().length) * 100}%` }}
+                />
+              </div>
+            </div>
+            <div class={styles.spacer} />
+          </header>
 
-          <ul class={styles.substeps}>
-            {currentStep()?.substeps.map((sub) => {
-              const checked = checkedSubsteps().has(sub.id);
-              return (
-                <li class={styles.substep}>
-                  <button
-                    class={styles.subCheck}
-                    classList={{ [styles.checked]: checked }}
-                    onClick={() => toggleSubstep(sub.id)}
-                    aria-label={checked ? 'Uncheck' : 'Check'}
-                  >
-                    {checked ? '✓' : '○'}
-                  </button>
-                  <span
-                    class={styles.subInstruction}
-                    classList={{ [styles.done]: checked }}
-                  >
-                    {sub.instruction}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </main>
+          <main class={styles.main}>
+            <div class={styles.stepCard}>
+              <div class={styles.stepHeader} onClick={toggleStep}>
+                <button
+                  class={styles.stepCheck}
+                  classList={{ [styles.checked]: stepChecked() }}
+                  aria-label={stepChecked() ? 'Uncheck step' : 'Check step'}
+                >
+                  {stepChecked() ? '✓' : '○'}
+                </button>
+                <h2 class={styles.stepTitle}>{currentStep()?.title ?? ''}</h2>
+              </div>
 
-      <footer class={styles.footer}>
-        <button
-          class={styles.navBtn}
-          classList={{ [styles.disabled]: isFirstStep() }}
-          onClick={prev}
-          disabled={isFirstStep()}
-        >
-          Previous
-        </button>
-        <div class={styles.dots}>
-          {steps().map((_, i) => (
+              <ul class={styles.substeps}>
+                <For each={currentStep()?.substeps ?? []}>
+                  {(sub) => {
+                    const checked = () => checkedSubsteps().has(sub.id);
+                    return (
+                      <li class={styles.substep}>
+                        <button
+                          class={styles.subCheck}
+                          classList={{ [styles.checked]: checked() }}
+                          onClick={() => toggleSubstep(sub.id)}
+                          aria-label={checked() ? 'Uncheck' : 'Check'}
+                        >
+                          {checked() ? '✓' : '○'}
+                        </button>
+                        <span
+                          class={styles.subInstruction}
+                          classList={{ [styles.done]: checked() }}
+                        >
+                          {sub.instruction}
+                        </span>
+                      </li>
+                    );
+                  }}
+                </For>
+              </ul>
+            </div>
+          </main>
+
+          <footer class={styles.footer}>
             <button
-              class={styles.dot}
-              classList={{ [styles.active]: i === currentIdx() }}
-              onClick={() => goTo(i)}
-              aria-label={`Go to step ${i + 1}`}
-            />
-          ))}
+              class={styles.navBtn}
+              classList={{ [styles.disabled]: isFirstStep() }}
+              onClick={prev}
+              disabled={isFirstStep()}
+            >
+              Previous
+            </button>
+            <div class={styles.dots}>
+              <For each={steps()}>
+                {(_, i) => (
+                  <button
+                    class={styles.dot}
+                    classList={{ [styles.active]: i() === currentIdx() }}
+                    onClick={() => goTo(i())}
+                    aria-label={`Go to step ${i() + 1}`}
+                  />
+                )}
+              </For>
+            </div>
+            <button
+              class={styles.navBtn}
+              classList={{ [styles.primary]: isLastStep() }}
+              onClick={next}
+            >
+              {isLastStep() ? 'Finish' : 'Next'}
+            </button>
+          </footer>
         </div>
-        <button
-          class={styles.navBtn}
-          classList={{ [styles.primary]: isLastStep() }}
-          onClick={next}
-        >
-          {isLastStep() ? 'Finish' : 'Next'}
-        </button>
-      </footer>
-    </div>
+      }>
+        <div class={styles.donePage}>
+          <div class={styles.doneContent}>
+            <h1>Done!</h1>
+            <p>You finished cooking {r().content.title}</p>
+            <button
+              class={styles.doneBtn}
+              onClick={() => navigate(`/recipe/${r().id}`)}
+            >
+              Back to recipe
+            </button>
+          </div>
+        </div>
+      </Show>
+    </Show>
   );
 }
