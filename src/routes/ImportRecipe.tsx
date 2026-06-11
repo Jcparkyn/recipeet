@@ -1,6 +1,6 @@
 import { createSignal } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { useRecipes } from '@/lib/store';
+import { settings, addRecipe } from '@/lib/storage';
 import { getParser } from '@/lib/parser';
 import { fetchUrlContent } from '@/lib/jina';
 import type { Recipe } from '@/lib/types';
@@ -8,7 +8,6 @@ import styles from './ImportRecipe.module.css';
 
 export default function ImportRecipe() {
   const navigate = useNavigate();
-  const ctx = useRecipes();
 
   const [tab, setTab] = createSignal<'paste' | 'url'>('paste');
   const [text, setText] = createSignal('');
@@ -38,17 +37,16 @@ export default function ImportRecipe() {
   }
 
   async function parseAndSave(content: string, sourceUrl?: string) {
+    const s = settings();
+    if (!s.apiKey) {
+      setError('Please set your API key in Settings first');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      const settings = ctx.settings();
-      if (!settings.apiKey) {
-        setError('Please set your API key in Settings first');
-        setLoading(false);
-        return;
-      }
-      const parser = getParser(settings.provider);
-      const result = await parser.parse(content, settings);
+      const parser = getParser(s.provider);
+      const result = await parser.parse(content, s);
       const recipe: Recipe = {
         id: crypto.randomUUID(),
         content: result.content,
@@ -56,7 +54,7 @@ export default function ImportRecipe() {
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
-      ctx.addRecipe(recipe);
+      addRecipe(recipe);
       navigate(`/recipe/${recipe.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Parsing failed');

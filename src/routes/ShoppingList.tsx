@@ -1,6 +1,6 @@
 import { createMemo, createSignal } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
-import { useRecipes } from '@/lib/store';
+import { recipes, getProgress, updateProgress } from '@/lib/storage';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '@/lib/types';
 import type { Ingredient, ShoppingCategory } from '@/lib/types';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
@@ -19,10 +19,9 @@ interface GroupedIngredient {
 export default function ShoppingList() {
   const params = useParams();
   const navigate = useNavigate();
-  const ctx = useRecipes();
 
-  const recipe = () => ctx.recipes.find((r) => r.id === params.id);
-  const progress = () => ctx.getProgress(params.id);
+  const recipe = () => recipes.find((r) => r.id === params.id);
+  const progress = () => getProgress(params.id);
 
   if (!recipe() || !progress()) {
     return (
@@ -50,7 +49,7 @@ export default function ShoppingList() {
     } else {
       current.add(id);
     }
-    ctx.updateProgress(r.id, { checkedShoppingItems: [...current] });
+    updateProgress(r.id, { checkedShoppingItems: [...current] });
   }
 
   function toggleCategory(ingredients: GroupedIngredient[]) {
@@ -65,7 +64,7 @@ export default function ShoppingList() {
         }
       }
     }
-    ctx.updateProgress(r.id, { checkedShoppingItems: [...current] });
+    updateProgress(r.id, { checkedShoppingItems: [...current] });
   }
 
   const cats = createMemo(() => {

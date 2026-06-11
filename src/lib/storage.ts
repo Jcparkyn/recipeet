@@ -24,9 +24,14 @@ export const [progresses, setProgress] = createStore<RecipeProgress[]>(
   loadJson(PROGRESS_KEY, []),
 );
 
-export const [settings, setSettings] = createSignal<LLMSettings>(
+export const [settings, setInternalSettings] = createSignal<LLMSettings>(
   loadJson(SETTINGS_KEY, DEFAULT_LLM_SETTINGS),
 );
+
+export function setSettings(s: LLMSettings) {
+  setInternalSettings(s);
+  persistSettings();
+}
 
 export function persistRecipes() {
   localStorage.setItem(RECIPES_KEY, JSON.stringify(recipes));
@@ -41,23 +46,26 @@ export function persistSettings() {
 }
 
 export function addRecipe(recipe: Recipe) {
-  setRecipes([recipe, ...recipes]);
-  setProgress([
-    {
+  setRecipes(produce((arr) => { arr.unshift(recipe); }));
+  setProgress(produce((arr) => {
+    arr.unshift({
       recipeId: recipe.id,
       currentServings: recipe.content.originalServings,
       checkedShoppingItems: [],
       checkedSteps: [],
       checkedSubsteps: [],
       currentCookingStep: 0,
-    },
-    ...progresses,
-  ]);
+    });
+  }));
+  persistRecipes();
+  persistProgress();
 }
 
 export function removeRecipe(id: string) {
   setRecipes(produce((r) => r.filter((p) => p.id !== id)));
   setProgress(produce((p) => p.filter((p) => p.recipeId !== id)));
+  persistRecipes();
+  persistProgress();
 }
 
 export function getProgress(recipeId: string): RecipeProgress | undefined {
@@ -72,6 +80,7 @@ export function updateProgress(recipeId: string, patch: Partial<RecipeProgress>)
       else if (patch.recipeId) p.push(patch as RecipeProgress);
     }),
   );
+  persistProgress();
 }
 
 export function clearAll() {
@@ -79,4 +88,6 @@ export function clearAll() {
   localStorage.removeItem(PROGRESS_KEY);
   setRecipes([]);
   setProgress([]);
+  persistRecipes();
+  persistProgress();
 }

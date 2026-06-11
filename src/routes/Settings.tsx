@@ -1,16 +1,13 @@
 import { useNavigate } from '@solidjs/router';
-import { useRecipes } from '@/lib/store';
+import { settings, setSettings, clearAll } from '@/lib/storage';
 import type { LLMSettings } from '@/lib/types';
 import styles from './Settings.module.css';
 
 export default function Settings() {
   const navigate = useNavigate();
-  const ctx = useRecipes();
-
-  const settings = ctx.settings;
 
   function update(field: keyof LLMSettings, value: string) {
-    ctx.setSettings({ ...settings(), [field]: value });
+    setSettings({ ...settings(), [field]: value });
   }
 
   return (
@@ -72,7 +69,7 @@ export default function Settings() {
             class={styles.dangerBtn}
             onClick={() => {
               if (confirm('Delete all recipes and settings?')) {
-                ctx.clearAll();
+                clearAll();
                 navigate('/');
               }
             }}

@@ -1,6 +1,6 @@
 import { createMemo, createSignal, Show, For } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
-import { useRecipes } from '@/lib/store';
+import { recipes, getProgress, updateProgress } from '@/lib/storage';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
 import type { SubStep } from '@/lib/types';
 import styles from './CookingMode.module.css';
@@ -8,10 +8,9 @@ import styles from './CookingMode.module.css';
 export default function CookingMode() {
   const params = useParams();
   const navigate = useNavigate();
-  const ctx = useRecipes();
 
-  const recipe = createMemo(() => ctx.recipes.find((r) => r.id === params.id));
-  const progress = createMemo(() => ctx.getProgress(params.id));
+  const recipe = createMemo(() => recipes.find((r) => r.id === params.id));
+  const progress = createMemo(() => getProgress(params.id));
 
   const steps = createMemo(() => recipe()?.content.steps ?? []);
   const currentIdx = createMemo(() => progress()?.currentCookingStep ?? 0);
@@ -31,7 +30,7 @@ export default function CookingMode() {
     if (!p) return;
     const current = new Set(p.checkedSubsteps);
     current.has(subId) ? current.delete(subId) : current.add(subId);
-    ctx.updateProgress(p.recipeId, { checkedSubsteps: [...current] });
+    updateProgress(p.recipeId, { checkedSubsteps: [...current] });
   }
 
   function toggleStep() {
@@ -49,7 +48,7 @@ export default function CookingMode() {
       for (const sub of step.substeps) currentSubs.add(sub.id);
     }
 
-    ctx.updateProgress(p.recipeId, {
+    updateProgress(p.recipeId, {
       checkedSteps: [...currentSteps],
       checkedSubsteps: [...currentSubs],
     });
@@ -58,7 +57,7 @@ export default function CookingMode() {
   function goTo(idx: number) {
     const r = recipe();
     if (r && idx >= 0 && idx < r.content.steps.length) {
-      ctx.updateProgress(r.id, { currentCookingStep: idx });
+      updateProgress(r.id, { currentCookingStep: idx });
     }
   }
 

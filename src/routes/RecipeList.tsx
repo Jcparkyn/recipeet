@@ -1,12 +1,10 @@
 import { useNavigate } from '@solidjs/router';
-import { useRecipes } from '@/lib/store';
+import { recipes, removeRecipe } from '@/lib/storage';
 import RecipeCard from '@/components/RecipeCard';
 import styles from './RecipeList.module.css';
 
 export default function RecipeList() {
   const navigate = useNavigate();
-  const ctx = useRecipes();
-  const { recipes } = ctx;
 
   return (
     <div class={styles.page}>
@@ -35,7 +33,7 @@ export default function RecipeList() {
               <RecipeCard
                 recipe={r}
                 onClick={() => navigate(`/recipe/${r.id}`)}
-                onDelete={() => ctx.removeRecipe(r.id)}
+                onDelete={() => removeRecipe(r.id)}
               />
             ))}
           </div>

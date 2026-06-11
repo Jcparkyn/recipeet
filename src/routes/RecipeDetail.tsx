@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from '@solidjs/router';
-import { useRecipes } from '@/lib/store';
+import { recipes, getProgress, removeRecipe, updateProgress } from '@/lib/storage';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
 import ServingsScaler from '@/components/ServingsScaler';
 import styles from './RecipeDetail.module.css';
@@ -7,10 +7,9 @@ import styles from './RecipeDetail.module.css';
 export default function RecipeDetail() {
   const params = useParams();
   const navigate = useNavigate();
-  const ctx = useRecipes();
 
-  const recipe = () => ctx.recipes.find((r) => r.id === params.id);
-  const progress = () => ctx.getProgress(params.id);
+  const recipe = () => recipes.find((r) => r.id === params.id);
+  const progress = () => getProgress(params.id);
 
   if (!recipe()) {
     return (
@@ -26,12 +25,12 @@ export default function RecipeDetail() {
   const servings = () => p?.currentServings ?? r.content.originalServings;
 
   function setServings(n: number) {
-    ctx.updateProgress(r.id, { currentServings: n });
+    updateProgress(r.id, { currentServings: n });
   }
 
   function handleDelete() {
     if (confirm('Delete this recipe?')) {
-      ctx.removeRecipe(r.id);
+      removeRecipe(r.id);
       navigate('/');
     }
   }
