@@ -1,13 +1,16 @@
+import { createSignal } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, removeRecipe, updateProgress } from '@/lib/storage';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
 import ServingsScaler from '@/components/ServingsScaler';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import styles from './RecipeDetail.module.css';
 
 export default function RecipeDetail() {
   const params = useParams();
   const navigate = useNavigate();
   const recipeId = params.id ?? '';
+  const [showDelete, setShowDelete] = createSignal(false);
 
   const maybeRecipe = recipes.find((x) => x.id === recipeId);
   if (!maybeRecipe) {
@@ -27,10 +30,7 @@ export default function RecipeDetail() {
   }
 
   function handleDelete() {
-    if (confirm('Delete this recipe?')) {
-      removeRecipe(recipe.id);
-      navigate('/');
-    }
+    setShowDelete(true);
   }
 
   return (
@@ -98,6 +98,18 @@ export default function RecipeDetail() {
           Start Cooking
         </button>
       </footer>
+
+      {showDelete() && (
+        <ConfirmDialog
+          message="Delete this recipe?"
+          onConfirm={() => {
+            setShowDelete(false);
+            removeRecipe(recipe.id);
+            navigate('/');
+          }}
+          onCancel={() => setShowDelete(false)}
+        />
+      )}
     </div>
   );
 }

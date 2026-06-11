@@ -1,10 +1,13 @@
+import { createSignal } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { settings, setSettings, clearAll } from '@/lib/storage';
 import type { LLMSettings } from '@/lib/types';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import styles from './Settings.module.css';
 
 export default function Settings() {
   const navigate = useNavigate();
+  const [showClear, setShowClear] = createSignal(false);
 
   function update(field: keyof LLMSettings, value: string) {
     setSettings({ ...settings(), [field]: value });
@@ -67,17 +70,24 @@ export default function Settings() {
           <h2 class={styles.sectionTitle}>Data</h2>
           <button
             class={styles.dangerBtn}
-            onClick={() => {
-              if (confirm('Delete all recipes and settings?')) {
-                clearAll();
-                navigate('/');
-              }
-            }}
+            onClick={() => setShowClear(true)}
           >
             Clear All Data
           </button>
         </section>
       </main>
+
+      {showClear() && (
+        <ConfirmDialog
+          message="Delete all recipes and settings?"
+          onConfirm={() => {
+            setShowClear(false);
+            clearAll();
+            navigate('/');
+          }}
+          onCancel={() => setShowClear(false)}
+        />
+      )}
     </div>
   );
 }
