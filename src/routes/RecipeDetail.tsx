@@ -1,4 +1,5 @@
-import { createSignal } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
+import { Portal } from 'solid-js/web';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, removeRecipe, updateProgress } from '@/lib/storage';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
@@ -11,6 +12,7 @@ export default function RecipeDetail() {
   const navigate = useNavigate();
   const recipeId = params.id ?? '';
   const [showDelete, setShowDelete] = createSignal(false);
+  const [stepPopoverId, setStepPopoverId] = createSignal<string | null>(null);
 
   const maybeRecipe = recipes.find((x) => x.id === recipeId);
   if (!maybeRecipe) {
@@ -60,7 +62,12 @@ export default function RecipeDetail() {
               const qty = scaleQuantity(ing.quantity, recipe.content.originalServings, servings());
               return (
                 <li class={styles.ingredient}>
-                  <span class={styles.ingName}>{ing.name}</span>
+                  <span class={styles.ingName}>
+                    {ing.name}
+                    {ing.notes && ing.notes.length < 50 && (
+                      <span class={styles.ingNotes}>{ing.notes}</span>
+                    )}
+                  </span>
                   <span class={styles.ingQty}>
                     {formatQuantity(qty)} {ing.unit}
                   </span>
@@ -73,12 +80,35 @@ export default function RecipeDetail() {
         <section>
           <h2 class={styles.sectionTitle}>Steps ({recipe.content.steps.length})</h2>
           <ol class={styles.stepList}>
-            {recipe.content.steps.map((step) => (
-              <li class={styles.step}>
-                <span class={styles.stepTitle}>{step.title}</span>
-                {step.notes && <span class={styles.stepNotes}>{step.notes}</span>}
-              </li>
-            ))}
+            {recipe.content.steps.map((step) => {
+              const showPopover = () => stepPopoverId() === step.id;
+              return (
+                <li class={styles.step}>
+                  <span class={styles.stepTitle}>{step.title}</span>
+                  {step.notes && (
+                    <>
+                      <button
+                        class={styles.stepInfoBtn}
+                        onClick={() => setStepPopoverId(showPopover() ? null : step.id)}
+                        aria-label="Step info"
+                      >
+                        ℹ
+                      </button>
+                      <Show when={showPopover()}>
+                        <Portal>
+                          <div class={styles.popoverOverlay} onClick={() => setStepPopoverId(null)}>
+                            <div class={styles.stepPopover} onClick={(e) => e.stopPropagation()}>
+                              <p class={styles.stepPopoverText}>{step.notes}</p>
+                              <button class={styles.popoverClose} onClick={() => setStepPopoverId(null)}>&times;</button>
+                            </div>
+                          </div>
+                        </Portal>
+                      </Show>
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ol>
         </section>
       </main>

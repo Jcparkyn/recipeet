@@ -91,6 +91,13 @@
   font-weight: 500;
 }
 
+.ingNotes {
+  font-size: 0.75rem;
+  color: #999;
+  font-weight: 400;
+  margin-left: 6px;
+}
+
 .ingQty {
   color: #2d6a4f;
   font-weight: 600;
@@ -108,16 +115,65 @@
 .step {
   font-size: 0.9rem;
   padding: 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .stepTitle {
   font-weight: 500;
 }
 
-.stepNotes {
-  margin-left: 6px;
-  font-size: 0.75rem;
+.stepInfoBtn {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0 4px;
+  color: #2d6a4f;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.popoverOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.stepPopover {
+  background: white;
+  border-radius: 12px;
+  padding: 20px 24px;
+  max-width: 320px;
+  width: 100%;
+  position: relative;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+}
+
+.stepPopoverText {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #333;
+  padding-right: 20px;
+}
+
+.popoverClose {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
   color: #999;
+  padding: 4px;
 }
 
 .footer {
