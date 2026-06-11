@@ -54,6 +54,7 @@ export function addRecipe(recipe: Recipe) {
       checkedShoppingItems: [],
       checkedSteps: [],
       checkedSubsteps: [],
+      checkedIngredients: [],
       currentCookingStep: 0,
     });
   }));

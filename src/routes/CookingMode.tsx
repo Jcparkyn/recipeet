@@ -1,6 +1,7 @@
 import { createMemo, createSignal, Show, For } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, updateProgress } from '@/lib/storage';
+import { scaleQuantity, formatQuantity } from '@/lib/scaling';
 import styles from './CookingMode.module.css';
 
 export default function CookingMode() {
@@ -16,12 +17,36 @@ export default function CookingMode() {
   const currentStep = createMemo(() => steps()[currentIdx()]);
   const checkedSteps = createMemo(() => new Set(progress()?.checkedSteps));
   const checkedSubsteps = createMemo(() => new Set(progress()?.checkedSubsteps));
+  const checkedIngredients = createMemo(() => new Set(progress()?.checkedIngredients));
 
   const stepChecked = createMemo(() => checkedSteps().has(currentStep()?.id ?? ''));
 
   const isLastStep = createMemo(() => currentIdx() >= steps().length - 1);
   const isFirstStep = createMemo(() => currentIdx() <= 0);
   const [completed, setCompleted] = createSignal(false);
+
+  const ingredientLookup = createMemo(() => {
+    const map = new Map<string, { name: string }>();
+    for (const ing of recipe()?.content.ingredients ?? []) {
+      map.set(ing.id, { name: ing.name });
+    }
+    return map;
+  });
+
+  const targetServings = createMemo(() => progress()?.currentServings ?? 1);
+  const originalServings = createMemo(() => recipe()?.content.originalServings ?? 1);
+
+  function toggleIngredient(ingredientId: string) {
+    const p = progress();
+    if (!p) return;
+    const current = new Set(p.checkedIngredients);
+    if (current.has(ingredientId)) {
+      current.delete(ingredientId);
+    } else {
+      current.add(ingredientId);
+    }
+    updateProgress(p.recipeId, { checkedIngredients: [...current] });
+  }
 
   function toggleSubstep(subId: string) {
     const p = progress();
@@ -151,7 +176,31 @@ export default function CookingMode() {
                         class={styles.subInstruction}
                         classList={{ [styles.done]: checked() }}
                       >
-                        {sub.instruction}
+                        <Show
+                          when={sub.segments}
+                          fallback={sub.instruction}
+                        >
+                          <For each={sub.segments}>
+                            {(seg) => {
+                              if (seg.type === 'text') return seg.text;
+                              const ing = ingredientLookup().get(seg.ingredientId);
+                              const scaled = scaleQuantity(seg.quantity, originalServings(), targetServings());
+                              const isChecked = () => checkedIngredients().has(seg.ingredientId);
+                              return (
+                                <>
+                                  {formatQuantity(scaled)} {seg.unit}{' '}
+                                  <span
+                                    class={styles.ingredientLink}
+                                    classList={{ [styles.checked]: isChecked() }}
+                                    onClick={() => toggleIngredient(seg.ingredientId)}
+                                  >
+                                    {ing?.name ?? ''}
+                                  </span>
+                                </>
+                              );
+                            }}
+                          </For>
+                        </Show>
                       </span>
                     </li>
                   );

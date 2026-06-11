@@ -126,6 +126,28 @@
   line-height: 1.5;
 }
 
+.ingredientLink {
+  color: #2d6a4f;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 1px dashed #2d6a4f;
+}
+
+.ingredientLink:active {
+  opacity: 0.7;
+}
+
+.ingredientLink.checked {
+  text-decoration: line-through;
+  color: #aaa;
+  border-bottom-color: transparent;
+}
+
+.subInstruction.done .ingredientLink {
+  color: #aaa;
+  border-bottom-color: #aaa;
+}
+
 .subInstruction.done {
   text-decoration: line-through;
   color: #aaa;

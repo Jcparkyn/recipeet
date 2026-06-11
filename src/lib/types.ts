@@ -19,6 +19,7 @@ export interface RecipeProgress {
   checkedShoppingItems: string[];
   checkedSteps: string[];
   checkedSubsteps: string[];
+  checkedIngredients: string[];
   currentCookingStep: number;
 }
 
@@ -41,10 +42,25 @@ export interface Step {
 export interface SubStep {
   id: string;
   instruction: string;
+  segments?: InstructionSegment[];
   linkedIngredients?: LinkedIngredient[];
 }
 
 export interface LinkedIngredient {
+  ingredientId: string;
+  quantity: number;
+  unit: string;
+}
+
+export type InstructionSegment = TextSegment | IngredientSegment;
+
+export interface TextSegment {
+  type: 'text';
+  text: string;
+}
+
+export interface IngredientSegment {
+  type: 'ingredient';
   ingredientId: string;
   quantity: number;
   unit: string;

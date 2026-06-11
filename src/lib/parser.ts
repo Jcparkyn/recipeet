@@ -1,4 +1,4 @@
-import type { RecipeContent, LLMSettings, ShoppingCategory } from './types';
+import type { RecipeContent, LLMSettings, ShoppingCategory, LinkedIngredient, InstructionSegment } from './types';
 
 export interface ParseResult {
   content: RecipeContent;
@@ -8,6 +8,8 @@ export interface ParseResult {
 export interface RecipeParser {
   parse(text: string, settings: LLMSettings): Promise<ParseResult>;
 }
+
+const ING_MARKER = /\[\[ing:(\d+)\]\]/g;
 
 const SYSTEM_PROMPT = `You are a recipe parser. Given unstructured recipe text, return a JSON object with this schema:
 {
@@ -31,7 +33,7 @@ Rules:
 1. Reorder steps: prep work (chopping, measuring, marinating) before cooking steps.
 2. Time-sensitive prep (e.g. "cut meat before it goes in a hot pan") gets its own step BEFORE the cooking step that needs it.
 3. Non-urgent measuring (e.g. "add 1 tsp paprika to sauce") stays inline in the cooking substep.
-4. Every substep instruction must include scaled ingredient quantities inline so no scrolling is needed.
+4. Every substep instruction must use [[ing:N]] markers where an ingredient is used (N = zero-based index in ingredients[]). Do NOT write the ingredient name or quantity in the instruction text — the [[ing:N]] marker replaces it entirely. Example: "Dice [[ing:0]] into small cubes" not "Dice 2 onions into small cubes".
 5. Categorize each ingredient.
 6. Default to 4 servings if not specified.
 7. Convert fractions to decimals (0.5 not 1/2).
@@ -104,10 +106,8 @@ function validateAndTransform(raw: Record<string, unknown>): ParseResult {
     title: String(step.title || `Step ${si + 1}`),
     order: typeof step.order === 'number' ? step.order : si,
     substeps: Array.isArray(step.substeps)
-      ? step.substeps.map((sub: Record<string, unknown>) => ({
-          id: crypto.randomUUID(),
-          instruction: String(sub.instruction || ''),
-          linkedIngredients: Array.isArray(sub.linkedIngredients)
+      ? step.substeps.map((sub: Record<string, unknown>) => {
+          const linkedIngredients: LinkedIngredient[] | undefined = Array.isArray(sub.linkedIngredients)
             ? sub.linkedIngredients.map((li: Record<string, unknown>) => ({
                 ingredientId:
                   typeof li.ingredientIndex === 'number' &&
@@ -118,8 +118,18 @@ function validateAndTransform(raw: Record<string, unknown>): ParseResult {
                 quantity: Number(li.quantity) || 0,
                 unit: String(li.unit || ''),
               }))
-            : undefined,
-        }))
+            : undefined;
+
+          const instruction = String(sub.instruction || '');
+          const segments = parseSegments(instruction, ingredients, linkedIngredients);
+
+          return {
+            id: crypto.randomUUID(),
+            instruction,
+            segments,
+            linkedIngredients,
+          };
+        })
       : [],
   }));
 
@@ -129,6 +139,57 @@ function validateAndTransform(raw: Record<string, unknown>): ParseResult {
     content: { title, originalServings, ingredients, steps },
     warnings: warnings.length > 0 ? warnings : undefined,
   };
+}
+
+function parseSegments(
+  instruction: string,
+  ingredients: { id: string; name: string }[],
+  linkedIngredients?: LinkedIngredient[],
+): InstructionSegment[] {
+  if (!linkedIngredients || linkedIngredients.length === 0) {
+    return [{ type: 'text', text: instruction }];
+  }
+
+  const byIndex = new Map<number, LinkedIngredient>();
+  for (const li of linkedIngredients) {
+    const idx = ingredients.findIndex((ing) => ing.id === li.ingredientId);
+    if (idx >= 0) byIndex.set(idx, li);
+  }
+
+  const segments: InstructionSegment[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  ING_MARKER.lastIndex = 0;
+
+  while ((match = ING_MARKER.exec(instruction)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: 'text', text: instruction.slice(lastIndex, match.index) });
+    }
+
+    const idx = Number(match[1]);
+    const li = byIndex.get(idx);
+
+    if (li && li.ingredientId) {
+      segments.push({
+        type: 'ingredient',
+        ingredientId: li.ingredientId,
+        quantity: li.quantity,
+        unit: li.unit,
+      });
+    } else {
+      const ing = ingredients[idx];
+      const name = ing ? ing.name : `ingredient ${idx}`;
+      segments.push({ type: 'text', text: `${li?.quantity ?? ''} ${li?.unit ?? ''} ${name}`.trim() });
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < instruction.length) {
+    segments.push({ type: 'text', text: instruction.slice(lastIndex) });
+  }
+
+  return segments;
 }
 
 function isValidCategory(c: unknown): c is ShoppingCategory {
