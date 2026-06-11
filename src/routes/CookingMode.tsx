@@ -105,7 +105,7 @@ export default function CookingMode() {
           </header>
 
           <main class={styles.main}>
-            <div class={styles.stepCard}>
+            <div>
               <div class={styles.stepHeader} onClick={toggleStep}>
                 <button
                   class={styles.stepCheck}

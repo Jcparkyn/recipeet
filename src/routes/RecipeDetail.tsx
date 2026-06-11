@@ -53,7 +53,7 @@ export default function RecipeDetail() {
       <main class={styles.main}>
         <ServingsScaler value={servings()} onChange={setServings} />
 
-        <section class={styles.section}>
+        <section>
           <h2 class={styles.sectionTitle}>
             Ingredients ({r.content.ingredients.length})
           </h2>
@@ -72,7 +72,7 @@ export default function RecipeDetail() {
           </ul>
         </section>
 
-        <section class={styles.section}>
+        <section>
           <h2 class={styles.sectionTitle}>Steps ({r.content.steps.length})</h2>
           <ol class={styles.stepList}>
             {r.content.steps.map((step) => (
