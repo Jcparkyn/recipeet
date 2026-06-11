@@ -1,4 +1,4 @@
-import { createSignal } from 'solid-js';
+import { createMemo, createSignal } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import { useRecipes } from '@/lib/store';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '@/lib/types';
@@ -68,7 +68,7 @@ export default function ShoppingList() {
     ctx.updateProgress(r.id, { checkedShoppingItems: [...current] });
   }
 
-  const cats = () => {
+  const cats = createMemo(() => {
     const g = grouped();
     const result: { category: ShoppingCategory; items: GroupedIngredient[] }[] = [];
     for (const cat of CATEGORY_ORDER) {
@@ -78,7 +78,7 @@ export default function ShoppingList() {
     const other = g.filter((i) => !i.category || !CATEGORY_ORDER.includes(i.category));
     if (other.length > 0) result.push({ category: 'other', items: other });
     return result;
-  };
+  });
 
   const [popoverId, setPopoverId] = createSignal<string | null>(null);
 

@@ -1,0 +1,28 @@
+.scaler {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #2d6a4f;
+  border-radius: 50%;
+  background: white;
+  color: #2d6a4f;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  min-width: 80px;
+  text-align: center;
+}

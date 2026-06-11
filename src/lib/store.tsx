@@ -1,12 +1,9 @@
-import { createContext, useContext, createEffect, createRoot } from 'solid-js';
+import { createContext, useContext, type ParentProps } from 'solid-js';
 import {
   recipes,
   progresses,
   settings,
   setSettings,
-  persistRecipes,
-  persistProgress,
-  persistSettings,
   addRecipe,
   removeRecipe,
   getProgress,
@@ -41,23 +38,8 @@ const store: Store = {
   clearAll,
 };
 
-createRoot(() => {
-  createEffect(() => {
-    void recipes.length;
-    persistRecipes();
-  });
-  createEffect(() => {
-    void progresses.length;
-    persistProgress();
-  });
-  createEffect(() => {
-    settings();
-    persistSettings();
-  });
-});
-
-export function RecipeStoreProvider(props: { children: unknown }) {
-  return <StoreCtx.Provider value={store}>{props.children as never}</StoreCtx.Provider>;
+export function RecipeStoreProvider(props: ParentProps) {
+  return <StoreCtx.Provider value={store}>{props.children}</StoreCtx.Provider>;
 }
 
 export function useRecipes(): Store {

@@ -1,4 +1,3 @@
-import { useNavigate } from '@solidjs/router';
 import type { Recipe } from '@/lib/types';
 import styles from './RecipeCard.module.css';
 
@@ -9,15 +8,14 @@ interface Props {
 }
 
 export default function RecipeCard(props: Props) {
-  const { recipe } = props;
-  const date = new Date(recipe.createdAt).toLocaleDateString();
+  const date = () => new Date(props.recipe.createdAt).toLocaleDateString();
 
   return (
     <div class={styles.card} onClick={props.onClick}>
       <div class={styles.body}>
-        <h3 class={styles.title}>{recipe.content.title}</h3>
+        <h3 class={styles.title}>{props.recipe.content.title}</h3>
         <span class={styles.meta}>
-          {recipe.content.originalServings} servings &middot; {date}
+          {props.recipe.content.originalServings} servings &middot; {date()}
         </span>
       </div>
       <button
