@@ -14,25 +14,27 @@ export default function ImportRecipe() {
   const [url, setUrl] = createSignal('');
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal('');
+  const [status, setStatus] = createSignal('');
 
   async function handlePaste() {
     const content = text().trim();
     if (!content) return;
+    setStatus('Parsing recipe...');
     await parseAndSave(content);
   }
 
   async function handleUrl() {
     const u = url().trim();
     if (!u) return;
-    setLoading(true);
     setError('');
     try {
+      setStatus('Fetching page...');
       const content = await fetchUrlContent(u);
+      setStatus('Parsing recipe...');
       await parseAndSave(content, u);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch URL');
-    } finally {
-      setLoading(false);
+      setStatus('');
     }
   }
 
@@ -44,6 +46,7 @@ export default function ImportRecipe() {
     }
     setLoading(true);
     setError('');
+    setStatus('Parsing recipe...');
     try {
       const parser = getParser(s.provider);
       const result = await parser.parse(content, s);
@@ -58,6 +61,7 @@ export default function ImportRecipe() {
       navigate(`/recipe/${recipe.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Parsing failed');
+      setStatus('');
     } finally {
       setLoading(false);
     }
@@ -101,7 +105,7 @@ export default function ImportRecipe() {
               rows={16}
             />
             <button class={styles.parseBtn} onClick={handlePaste} disabled={loading()}>
-              {loading() ? 'Parsing...' : 'Parse Recipe'}
+              {loading() ? status() : 'Parse Recipe'}
             </button>
           </div>
         ) : (
@@ -114,7 +118,7 @@ export default function ImportRecipe() {
               onInput={(e) => setUrl(e.currentTarget.value)}
             />
             <button class={styles.parseBtn} onClick={handleUrl} disabled={loading()}>
-              {loading() ? 'Fetching...' : 'Fetch & Parse'}
+              {loading() ? status() : 'Fetch & Parse'}
             </button>
           </div>
         )}
