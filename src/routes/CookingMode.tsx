@@ -9,8 +9,8 @@ export default function CookingMode() {
   const params = useParams();
   const navigate = useNavigate();
 
-  const recipe = createMemo(() => recipes.find((r) => r.id === params.id));
-  const progress = createMemo(() => getProgress(params.id));
+  const recipe = createMemo(() => recipes.find((r) => r.id === params.id!));
+  const progress = createMemo(() => getProgress(params.id!));
 
   const steps = createMemo(() => recipe()?.content.steps ?? []);
   const currentIdx = createMemo(() => progress()?.currentCookingStep ?? 0);

@@ -8,8 +8,8 @@ export default function RecipeDetail() {
   const params = useParams();
   const navigate = useNavigate();
 
-  const recipe = () => recipes.find((r) => r.id === params.id);
-  const progress = () => getProgress(params.id);
+  const recipe = () => recipes.find((r) => r.id === params.id!);
+  const progress = () => getProgress(params.id!);
 
   if (!recipe()) {
     return (

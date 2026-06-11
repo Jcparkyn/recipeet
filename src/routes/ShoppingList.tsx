@@ -20,8 +20,8 @@ export default function ShoppingList() {
   const params = useParams();
   const navigate = useNavigate();
 
-  const recipe = () => recipes.find((r) => r.id === params.id);
-  const progress = () => getProgress(params.id);
+  const recipe = () => recipes.find((r) => r.id === params.id!);
+  const progress = () => getProgress(params.id!);
 
   if (!recipe() || !progress()) {
     return (
@@ -36,7 +36,7 @@ export default function ShoppingList() {
   const p = progress()!;
   const servings = () => p.currentServings;
 
-  const grouped = () => groupIngredients(r.content.ingredients, servings(), r.content.originalServings);
+  const grouped = createMemo(() => groupIngredients(r.content.ingredients, servings(), r.content.originalServings));
   const allIds = () => r.content.ingredients.map((i) => i.id);
   const checked = () => new Set(p.checkedShoppingItems);
   const checkedCount = () => p.checkedShoppingItems.length;
