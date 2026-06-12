@@ -110,5 +110,5 @@ export const DEFAULT_LLM_SETTINGS: LLMSettings = {
   provider: 'deepseek',
   apiKey: '',
   baseUrl: 'https://api.deepseek.com/v1',
-  model: 'deepseek-chat',
+  model: 'deepseek-v4-pro',
 };

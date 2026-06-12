@@ -60,7 +60,7 @@ export class DeepSeekParser implements RecipeParser {
         Authorization: `Bearer ${settings.apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-v4-pro',
+        model: settings.model,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: text },
