@@ -9,7 +9,6 @@
   overflow: hidden;
 }
 
-.loading,
 .error {
   display: flex;
   align-items: center;
