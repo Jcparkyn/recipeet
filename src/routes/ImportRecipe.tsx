@@ -19,6 +19,7 @@ export default function ImportRecipe() {
   async function handlePaste() {
     const content = text().trim();
     if (!content) return;
+    setLoading(true);
     setStatus('Parsing recipe...');
     await parseAndSave(content);
   }
@@ -27,6 +28,7 @@ export default function ImportRecipe() {
     const u = url().trim();
     if (!u) return;
     setError('');
+    setLoading(true);
     try {
       setStatus('Fetching page...');
       const content = await fetchUrlContent(u);
@@ -35,6 +37,7 @@ export default function ImportRecipe() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch URL');
       setStatus('');
+      setLoading(false);
     }
   }
 
@@ -42,6 +45,7 @@ export default function ImportRecipe() {
     const s = settings();
     if (!s.apiKey) {
       setError('Please set your API key in Settings first');
+      setLoading(false);
       return;
     }
     setLoading(true);
