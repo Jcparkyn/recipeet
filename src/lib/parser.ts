@@ -43,7 +43,7 @@ Rules:
 9. Convert fractions to decimals (0.5 not 1/2).
 10. linkedIngredients[].ingredientIndex refers to zero-based index in ingredients[].
 12. Extract preparation notes, substitutions, or special qualities from ingredient text (e.g. "cold, cubed", "peeled and diced", "or margarine"). Include in the "notes" field of each ingredient. Leave empty if none.
-13. Identify up to 2 relevant image URLs from the original page content (the markdown may contain ![alt](url) references) that illustrate each step. Include them in an "images" array on each step object. Only include images directly useful for understanding that specific step. Omit the field or use an empty array if no relevant images exist.
+13. Identify up to 2 relevant image URLs from the original page content (the markdown may contain ![alt](url) references) that illustrate each step. Include them in an "images" array on each step object. Only include images directly useful for understanding that specific step. Use an empty array if no relevant images exist.
 
 11. Convert all units to metric:
    - Volume: 1 cup = 240 ml, 1 tbsp = 15 ml, 1 tsp = 5 ml, 1 fl oz = 30 ml, 1 pint = 480 ml, 1 quart = 960 ml, 1 gallon = 3840 ml
