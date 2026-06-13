@@ -167,71 +167,44 @@ export function getConversions(
 ): Conversion[] {
   const results: Conversion[] = [];
 
-  if (qty.kind === 'ml') {
-    const ml = qty.value;
-    results.push({ unit: 'ml', value: round(ml), label: `${round(ml)} ml` });
-    if (ml >= 1000) {
-      results.push({ unit: 'l', value: round(ml / 1000), label: `${round(ml / 1000)} l` });
-    }
-    for (const [u, factor] of Object.entries(VOLUME_TO_ML)) {
-      if (u === 'ml' || u === 'l') continue;
-      if (u === 'gallon' && ml < 1000) continue;
-      if (u === 'quart' && ml < 200) continue;
-      if (u === 'pint' && ml < 100) continue;
-      results.push({ unit: u, value: round(ml / factor), label: `${round(ml / factor)} ${u}` });
-    }
-    if (ingredientName) {
-      const density = lookupDensity(ingredientName);
-      if (density) {
-        const g = ml * density;
-        results.push({ unit: 'g', value: round(g), label: `${round(g)} g` });
-        if (g >= 1000)
-          results.push({ unit: 'kg', value: round(g / 1000), label: `${round(g / 1000)} kg` });
-        for (const [u, factor] of Object.entries(WEIGHT_TO_G)) {
-          if (u === 'g' || u === 'kg') continue;
-          if (u === 'lb' && g < 50) continue;
-          results.push({ unit: u, value: round(g / factor), label: `${round(g / factor)} ${u}` });
-        }
-      }
-    }
-  } else if (qty.kind === 'gram') {
-    const g = qty.value;
-    results.push({ unit: 'g', value: round(g), label: `${round(g)} g` });
-    if (g >= 1000)
-      results.push({ unit: 'kg', value: round(g / 1000), label: `${round(g / 1000)} kg` });
-    for (const [u, factor] of Object.entries(WEIGHT_TO_G)) {
-      if (u === 'g' || u === 'kg') continue;
-      if (u === 'lb' && g < 50) continue;
-      results.push({ unit: u, value: round(g / factor), label: `${round(g / factor)} ${u}` });
-    }
-    if (ingredientName) {
-      const density = lookupDensity(ingredientName);
-      if (density) {
-        const ml = g / density;
-        results.push({ unit: 'ml', value: round(ml), label: `${round(ml)} ml` });
-        if (ml >= 1000)
-          results.push({ unit: 'l', value: round(ml / 1000), label: `${round(ml / 1000)} l` });
-        for (const [u, factor] of Object.entries(VOLUME_TO_ML)) {
-          if (u === 'ml' || u === 'l') continue;
-          results.push({
-            unit: u,
-            value: round(ml / factor),
-            label: `${round(ml / factor)} ${u}`,
-          });
-        }
-      }
+  let ml: number | null = null;
+  let g: number | null = null;
+
+  if (qty.kind === 'ml') ml = qty.value;
+  else if (qty.kind === 'gram') g = qty.value;
+
+  if (ingredientName && (ml !== null || g !== null)) {
+    const density = lookupDensity(ingredientName);
+    if (density) {
+      if (ml !== null && g === null) g = ml * density;
+      else if (g !== null && ml === null) ml = g / density;
     }
   }
 
-  const seen = new Set<string>();
-  return results.filter((c) => {
-    if (IMPERIAL_UNITS.has(c.unit)) return false;
-    const d = displayQuantity(qty);
-    if (c.label === `${d.quantity} ${d.unit}`) return false;
-    if (seen.has(c.unit)) return false;
-    seen.add(c.unit);
-    return true;
-  });
+  if (g !== null) {
+    if (g < 1000) {
+      results.push({ unit: 'g', value: round(g), label: `${round(g)} g` });
+    } else {
+      results.push({ unit: 'kg', value: round(g / 1000), label: `${round(g / 1000)} kg` });
+    }
+  }
+
+  if (ml !== null) {
+    if (ml <= 40) {
+      results.push({ unit: 'tsp', value: round(ml / VOLUME_TO_ML.tsp), label: `${round(ml / VOLUME_TO_ML.tsp)} tsp` });
+    }
+    if (ml <= 80) {
+      results.push({ unit: 'tbsp', value: round(ml / VOLUME_TO_ML.tbsp), label: `${round(ml / VOLUME_TO_ML.tbsp)} tbsp` });
+    }
+    if (ml < 1000) {
+      results.push({ unit: 'ml', value: round(ml), label: `${round(ml)} ml` });
+    } else {
+      results.push({ unit: 'l', value: round(ml / 1000), label: `${round(ml / 1000)} l` });
+    }
+  }
+
+  const displayed = displayQuantity(qty);
+  return results.filter((c) => c.label !== `${displayed.quantity} ${displayed.unit}`);
 }
 
 function round(n: number): number {
@@ -240,8 +213,6 @@ function round(n: number): number {
 
 const AU_TBSP_ML = 20;
 const METRIC_CUP_ML = 250;
-
-const IMPERIAL_UNITS = new Set(['floz', 'pint', 'quart', 'gallon', 'oz', 'lb']);
 
 interface UnitDisplay {
   quantity: number;
