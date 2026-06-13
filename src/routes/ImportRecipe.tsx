@@ -1,4 +1,4 @@
-import { createSignal } from 'solid-js';
+import { createSignal, createResource, createEffect } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { settings, addRecipe } from '@/lib/storage';
 import { getParser } from '@/lib/parser';
@@ -6,69 +6,66 @@ import { fetchUrlContent } from '@/lib/jina';
 import type { Recipe } from '@/lib/types';
 import styles from './ImportRecipe.module.css';
 
+type ImportRequest =
+  | { type: 'paste'; content: string }
+  | { type: 'url'; url: string };
+
 export default function ImportRecipe() {
   const navigate = useNavigate();
 
   const [tab, setTab] = createSignal<'paste' | 'url'>('paste');
   const [text, setText] = createSignal('');
   const [url, setUrl] = createSignal('');
-  const [loading, setLoading] = createSignal(false);
-  const [error, setError] = createSignal('');
-  const [status, setStatus] = createSignal('');
+  const [importReq, setImportReq] = createSignal<ImportRequest | null>(null);
+  const [errorDismissed, setErrorDismissed] = createSignal(false);
 
-  async function handlePaste() {
-    const content = text().trim();
-    if (!content) return;
-    setLoading(true);
-    setStatus('Parsing recipe...');
-    await parseAndSave(content);
-  }
+  const [result] = createResource(importReq, async (req): Promise<Recipe> => {
+    let content: string;
+    let sourceUrl: string | undefined;
 
-  async function handleUrl() {
-    const u = url().trim();
-    if (!u) return;
-    setError('');
-    setLoading(true);
-    try {
-      setStatus('Fetching page...');
-      const content = await fetchUrlContent(u);
-      setStatus('Parsing recipe...');
-      await parseAndSave(content, u);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch URL');
-      setStatus('');
-      setLoading(false);
+    if (req.type === 'paste') {
+      content = req.content;
+    } else {
+      content = await fetchUrlContent(req.url);
+      sourceUrl = req.url;
     }
-  }
 
-  async function parseAndSave(content: string, sourceUrl?: string) {
     const s = settings();
     if (!s.apiKey) {
-      setError('Please set your API key in Settings first');
-      setLoading(false);
-      return;
+      throw new Error('Please set your API key in Settings first');
     }
-    setLoading(true);
-    setError('');
-    setStatus('Parsing recipe...');
-    try {
-      const parser = getParser(s.provider);
-      const result = await parser.parse(content, s);
-      const recipe: Recipe = {
-        id: crypto.randomUUID(),
-        content: result.content,
-        sourceUrl,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      addRecipe(recipe);
-      navigate(`/recipe/${recipe.id}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Parsing failed');
-      setStatus('');
-    } finally {
-      setLoading(false);
-    }
+
+    const parser = getParser(s.provider);
+    const parsed = await parser.parse(content, s);
+
+    return {
+      id: crypto.randomUUID(),
+      content: parsed.content,
+      sourceUrl,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+  });
+
+  createEffect(() => {
+    const recipe = result();
+    if (!recipe) return;
+    addRecipe(recipe);
+    navigate(`/recipe/${recipe.id}`);
+  });
+
+  function handlePaste() {
+    const content = text().trim();
+    if (!content) return;
+    setErrorDismissed(false);
+    setImportReq({ type: 'paste', content });
+  }
+
+  function handleUrl() {
+    const u = url().trim();
+    if (!u) return;
+    setErrorDismissed(false);
+    setImportReq({ type: 'url', url: u });
   }
 
   return (
@@ -108,8 +105,8 @@ export default function ImportRecipe() {
               onInput={(e) => setText(e.currentTarget.value)}
               rows={16}
             />
-            <button class={styles.parseBtn} onClick={handlePaste} disabled={loading()}>
-              {loading() ? status() : 'Parse Recipe'}
+            <button class={styles.parseBtn} onClick={handlePaste} disabled={result.loading}>
+              {result.loading ? 'Processing...' : 'Parse Recipe'}
             </button>
           </div>
         ) : (
@@ -121,16 +118,16 @@ export default function ImportRecipe() {
               value={url()}
               onInput={(e) => setUrl(e.currentTarget.value)}
             />
-            <button class={styles.parseBtn} onClick={handleUrl} disabled={loading()}>
-              {loading() ? status() : 'Fetch & Parse'}
+            <button class={styles.parseBtn} onClick={handleUrl} disabled={result.loading}>
+              {result.loading ? 'Processing...' : 'Fetch & Parse'}
             </button>
           </div>
         )}
 
-        {error() && (
+        {result.error && !errorDismissed() && (
           <div class={styles.error}>
-            <p>{error()}</p>
-            <button onClick={() => setError('')}>Dismiss</button>
+            <p>{result.error.message ?? String(result.error)}</p>
+            <button onClick={() => setErrorDismissed(true)}>Dismiss</button>
           </div>
         )}
       </main>
