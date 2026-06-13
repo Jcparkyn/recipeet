@@ -2,6 +2,7 @@ import { createMemo, createSignal, Show, For } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, updateProgress } from '@/lib/storage';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
+import { getToggledDisplay } from '@/lib/conversions';
 import styles from './CookingMode.module.css';
 
 export default function CookingMode() {
@@ -25,6 +26,7 @@ export default function CookingMode() {
   const isLastStep = createMemo(() => currentIdx() >= steps().length - 1);
   const isFirstStep = createMemo(() => currentIdx() <= 0);
   const [completed, setCompleted] = createSignal(false);
+  const [unitModes, setUnitModes] = createSignal<Record<string, number>>({});
 
   const ingredientLookup = createMemo(() => {
     const map = new Map<string, { name: string }>();
@@ -187,9 +189,27 @@ export default function CookingMode() {
                               const ing = ingredientLookup().get(seg.ingredientId);
                               const scaled = scaleQuantity(seg.quantity, originalServings(), targetServings());
                               const isChecked = () => checkedIngredients().has(seg.ingredientId);
+                              const modeKey = `${sub.id}:${seg.ingredientId}`;
+                              const modeIdx = () => unitModes()[modeKey] ?? 0;
+                              const toggled = () => getToggledDisplay(scaled, seg.unit, modeIdx(), ing?.name);
+                              const hasToggle = () => toggled().totalModes > 1;
                               return (
                                 <>
-                                  {formatQuantity(scaled)} {seg.unit}{' '}
+                                  <button
+                                    class={styles.unitToggle}
+                                    classList={{ [styles.hasToggle]: hasToggle() }}
+                                    onClick={() => {
+                                      if (hasToggle()) {
+                                        const current = unitModes();
+                                        setUnitModes({ ...current, [modeKey]: (modeIdx() + 1) % toggled().totalModes });
+                                      }
+                                    }}
+                                    aria-label="Toggle unit"
+                                    disabled={!hasToggle()}
+                                  >
+                                    {formatQuantity(toggled().display.quantity)} {toggled().display.unit}
+                                  </button>
+                                  {' '}
                                   <span
                                     class={styles.ingredientLink}
                                     classList={{ [styles.checked]: isChecked() }}

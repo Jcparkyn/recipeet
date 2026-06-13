@@ -137,6 +137,23 @@
   opacity: 0.7;
 }
 
+.unitToggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: default;
+}
+
+.unitToggle.hasToggle {
+  cursor: pointer;
+}
+
+.unitToggle.hasToggle:active {
+  opacity: 0.7;
+}
+
 .ingredientLink.checked {
   text-decoration: line-through;
   color: #aaa;

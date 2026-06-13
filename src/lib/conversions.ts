@@ -208,6 +208,7 @@ export function getConversions(
 
   const seen = new Set<string>();
   return results.filter((c) => {
+    if (IMPERIAL_UNITS.has(c.unit)) return false;
     if (c.label === `${quantity} ${unitLower}`) return false;
     if (seen.has(c.unit)) return false;
     seen.add(c.unit);
@@ -217,4 +218,79 @@ export function getConversions(
 
 function round(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+const AU_TBSP_ML = 20;
+const METRIC_CUP_ML = 250;
+
+const IMPERIAL_UNITS = new Set(['fl_oz', 'pint', 'quart', 'gallon', 'oz', 'lb']);
+
+export interface UnitDisplay {
+  quantity: number;
+  unit: string;
+}
+
+export function getToggledDisplay(
+  quantity: number,
+  unit: string,
+  modeIndex: number,
+  ingredientName?: string,
+): { display: UnitDisplay; totalModes: number } {
+  const unitLower = unit.toLowerCase().trim();
+  const original: UnitDisplay = { quantity, unit };
+
+  let baseG: number | null = null;
+  let baseMl: number | null = null;
+
+  if (unitLower in WEIGHT_TO_G) {
+    baseG = quantity * WEIGHT_TO_G[unitLower];
+  } else if (unitLower in VOLUME_TO_ML) {
+    baseMl = quantity * VOLUME_TO_ML[unitLower];
+  }
+
+  if (ingredientName) {
+    const density = lookupDensity(ingredientName);
+    if (density) {
+      if (baseG !== null && baseMl === null) baseMl = baseG / density;
+      else if (baseMl !== null && baseG === null) baseG = baseMl * density;
+    }
+  }
+
+  const availableModes: UnitDisplay[] = [original];
+
+  function sameDisplay(a: UnitDisplay, b: UnitDisplay) {
+    return a.unit === b.unit && Math.abs(a.quantity - b.quantity) < 0.005;
+  }
+
+  function addWeight(g: number) {
+    const d = g < 1000
+      ? { quantity: round(g), unit: 'g' as const }
+      : { quantity: round(g / 1000), unit: 'kg' as const };
+    if (!sameDisplay(d, original)) availableModes.push(d);
+  }
+
+  function addVolume(ml: number) {
+    const d = ml < 1000
+      ? { quantity: round(ml), unit: 'ml' as const }
+      : { quantity: round(ml / 1000), unit: 'l' as const };
+    if (!sameDisplay(d, original)) availableModes.push(d);
+  }
+
+  function addHousehold(ml: number) {
+    let d: UnitDisplay;
+    if (ml < 10) d = { quantity: round(ml / 5), unit: 'tsp' };
+    else if (ml < 60) d = { quantity: round(ml / AU_TBSP_ML), unit: 'tbsp' };
+    else d = { quantity: round(ml / METRIC_CUP_ML), unit: 'cup' };
+    if (!sameDisplay(d, original)) availableModes.push(d);
+  }
+
+  if (baseG !== null) addWeight(baseG);
+  if (baseMl !== null) addVolume(baseMl);
+  if (baseMl !== null) addHousehold(baseMl);
+
+  const clampedIndex = ((modeIndex % availableModes.length) + availableModes.length) % availableModes.length;
+  return {
+    display: availableModes[clampedIndex],
+    totalModes: availableModes.length,
+  };
 }

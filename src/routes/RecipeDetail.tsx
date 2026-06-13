@@ -3,6 +3,7 @@ import { Portal } from 'solid-js/web';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, removeRecipe, updateProgress } from '@/lib/storage';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
+import { getToggledDisplay } from '@/lib/conversions';
 import ServingsScaler from '@/components/ServingsScaler';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import styles from './RecipeDetail.module.css';
@@ -13,6 +14,7 @@ export default function RecipeDetail() {
   const recipeId = params.id ?? '';
   const [showDelete, setShowDelete] = createSignal(false);
   const [stepPopoverId, setStepPopoverId] = createSignal<string | null>(null);
+  const [unitModes, setUnitModes] = createSignal<Record<string, number>>({});
 
   const maybeRecipe = recipes.find((x) => x.id === recipeId);
   if (!maybeRecipe) {
@@ -60,6 +62,9 @@ export default function RecipeDetail() {
           <ul class={styles.ingredientList}>
             {recipe.content.ingredients.map((ing) => {
               const qty = scaleQuantity(ing.quantity, recipe.content.originalServings, servings());
+              const modeIdx = () => unitModes()[ing.id] ?? 0;
+              const toggled = () => getToggledDisplay(qty, ing.unit, modeIdx(), ing.name);
+              const hasToggle = () => toggled().totalModes > 1;
               return (
                 <li class={styles.ingredient}>
                   <span class={styles.ingName}>
@@ -68,9 +73,20 @@ export default function RecipeDetail() {
                       <span class={styles.ingNotes}>{ing.notes}</span>
                     )}
                   </span>
-                  <span class={styles.ingQty}>
-                    {formatQuantity(qty)} {ing.unit}
-                  </span>
+                  <button
+                    class={styles.ingQty}
+                    classList={{ [styles.hasToggle]: hasToggle() }}
+                    onClick={() => {
+                      if (hasToggle()) {
+                        const current = unitModes();
+                        setUnitModes({ ...current, [ing.id]: (modeIdx() + 1) % toggled().totalModes });
+                      }
+                    }}
+                    aria-label="Toggle unit"
+                    disabled={!hasToggle()}
+                  >
+                    {formatQuantity(toggled().display.quantity)} {toggled().display.unit}
+                  </button>
                 </li>
               );
             })}
