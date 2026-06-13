@@ -2,7 +2,7 @@ import type { Quantity } from './types';
 
 export const VOLUME_TO_ML: Record<string, number> = {
   tsp: 5,
-  tbsp: 15,
+  tbsp: 20,
   floz: 30,
   cup: 240,
   pint: 480,
