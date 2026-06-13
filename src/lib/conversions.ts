@@ -1,6 +1,6 @@
 import type { Quantity } from './types';
 
-export const VOLUME_TO_ML: Record<string, number> = {
+const VOLUME_TO_ML: Record<string, number> = {
   tsp: 5,
   tbsp: 20,
   floz: 30,
@@ -12,7 +12,7 @@ export const VOLUME_TO_ML: Record<string, number> = {
   l: 1000,
 };
 
-export const WEIGHT_TO_G: Record<string, number> = {
+const WEIGHT_TO_G: Record<string, number> = {
   g: 1,
   kg: 1000,
   oz: 28.35,
@@ -121,23 +121,13 @@ const DENSITIES: Record<string, number> = {
   agar: 0.55,
 };
 
-export function lookupDensity(name: string): number | undefined {
+function lookupDensity(name: string): number | undefined {
   const key = name.toLowerCase().trim();
   if (DENSITIES[key]) return DENSITIES[key];
   for (const [known, density] of Object.entries(DENSITIES)) {
     if (key.includes(known) || known.includes(key)) return density;
   }
   return undefined;
-}
-
-export function isVolumeUnit(unit: string): boolean {
-  const u = unit.toLowerCase().trim();
-  return u in VOLUME_TO_ML;
-}
-
-export function isWeightUnit(unit: string): boolean {
-  const u = unit.toLowerCase().trim();
-  return u in WEIGHT_TO_G;
 }
 
 export function toQuantity(quantity: number, unit: string): Quantity {
@@ -165,7 +155,7 @@ export function displayQuantity(qty: Quantity): UnitDisplay {
   return { quantity: round(qty.value), unit: '' };
 }
 
-export interface Conversion {
+interface Conversion {
   unit: string;
   value: number;
   label: string;
@@ -253,7 +243,7 @@ const METRIC_CUP_ML = 250;
 
 const IMPERIAL_UNITS = new Set(['floz', 'pint', 'quart', 'gallon', 'oz', 'lb']);
 
-export interface UnitDisplay {
+interface UnitDisplay {
   quantity: number;
   unit: string;
 }
