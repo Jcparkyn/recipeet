@@ -45,11 +45,7 @@ Rules:
 12. Extract preparation notes, substitutions, or special qualities from ingredient text (e.g. "cold, cubed", "peeled and diced", "or margarine"). Include in the "notes" field of each ingredient. Leave empty if none.
 13. Identify up to 2 relevant image URLs from the original page content (the markdown may contain ![alt](url) references) that illustrate each step. Include them in an "images" array on each step object. Only include images directly useful for understanding that specific step. Use an empty array if no relevant images exist.
 
-11. Convert all units to metric:
-   - Volume: 1 cup = 240 ml, 1 tbsp = 15 ml, 1 tsp = 5 ml, 1 fl oz = 30 ml, 1 pint = 480 ml, 1 quart = 960 ml, 1 gallon = 3840 ml
-   - Weight: 1 oz = 28 g, 1 lb = 454 g
-   - Use "ml" for volumes under 1000 ml, "l" for volumes 1000 ml and above
-   - Use "g" for weights under 1000 g, "kg" for weights 1000 g and above
+11. Do NOT convert units. Return units exactly as they appear in the source text. Use only these unit strings: ml, l, g, kg, oz, lb, cup, tbsp, tsp, floz, pint, quart, gallon. For items without a unit (e.g. eggs, cloves, pinches of salt), use an empty string "".
 
 Return only valid JSON, no markdown fences, no extra text.`;
 

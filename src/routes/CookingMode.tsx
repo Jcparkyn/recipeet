@@ -2,7 +2,7 @@ import { createMemo, createSignal, Show, For } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, updateProgress } from '@/lib/storage';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
-import { getToggledDisplay } from '@/lib/conversions';
+import { getToggledDisplay, toQuantity } from '@/lib/conversions';
 import styles from './CookingMode.module.css';
 
 export default function CookingMode() {
@@ -188,10 +188,11 @@ export default function CookingMode() {
                               if (seg.type === 'text') return seg.text;
                               const ing = ingredientLookup().get(seg.ingredientId);
                               const scaled = scaleQuantity(seg.quantity, originalServings(), targetServings());
+                              const segQty = () => toQuantity(scaled, seg.unit);
                               const isChecked = () => checkedIngredients().has(seg.ingredientId);
                               const modeKey = `${sub.id}:${seg.ingredientId}`;
                               const modeIdx = () => unitModes()[modeKey] ?? 0;
-                              const toggled = () => getToggledDisplay(scaled, seg.unit, modeIdx(), ing?.name);
+                              const toggled = () => getToggledDisplay(segQty(), seg.unit, modeIdx(), ing?.name);
                               const hasToggle = () => toggled().totalModes > 1;
                               return (
                                 <>

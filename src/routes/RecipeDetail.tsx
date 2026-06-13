@@ -3,7 +3,7 @@ import { Portal } from 'solid-js/web';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, removeRecipe, updateProgress } from '@/lib/storage';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
-import { getToggledDisplay } from '@/lib/conversions';
+import { getToggledDisplay, toQuantity } from '@/lib/conversions';
 import ServingsScaler from '@/components/ServingsScaler';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import styles from './RecipeDetail.module.css';
@@ -62,8 +62,9 @@ export default function RecipeDetail() {
           <ul class={styles.ingredientList}>
             {recipe.content.ingredients.map((ing) => {
               const qty = scaleQuantity(ing.quantity, recipe.content.originalServings, servings());
+              const ingQty = () => toQuantity(qty, ing.unit);
               const modeIdx = () => unitModes()[ing.id] ?? 0;
-              const toggled = () => getToggledDisplay(qty, ing.unit, modeIdx(), ing.name);
+              const toggled = () => getToggledDisplay(ingQty(), ing.unit, modeIdx(), ing.name);
               const hasToggle = () => toggled().totalModes > 1;
               return (
                 <li class={styles.ingredient}>

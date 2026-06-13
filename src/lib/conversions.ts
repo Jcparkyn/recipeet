@@ -1,7 +1,9 @@
+import type { Quantity } from './types';
+
 export const VOLUME_TO_ML: Record<string, number> = {
   tsp: 5,
   tbsp: 15,
-  fl_oz: 30,
+  floz: 30,
   cup: 240,
   pint: 480,
   quart: 960,
@@ -129,11 +131,38 @@ export function lookupDensity(name: string): number | undefined {
 }
 
 export function isVolumeUnit(unit: string): boolean {
-  return unit in VOLUME_TO_ML;
+  const u = unit.toLowerCase().trim();
+  return u in VOLUME_TO_ML;
 }
 
 export function isWeightUnit(unit: string): boolean {
-  return unit in WEIGHT_TO_G;
+  const u = unit.toLowerCase().trim();
+  return u in WEIGHT_TO_G;
+}
+
+export function toQuantity(quantity: number, unit: string): Quantity {
+  const u = unit.toLowerCase().trim();
+  if (u in VOLUME_TO_ML) {
+    return { value: quantity * VOLUME_TO_ML[u], kind: 'ml' };
+  }
+  if (u in WEIGHT_TO_G) {
+    return { value: quantity * WEIGHT_TO_G[u], kind: 'gram' };
+  }
+  return { value: quantity, kind: 'count' };
+}
+
+export function displayQuantity(qty: Quantity): UnitDisplay {
+  if (qty.kind === 'gram') {
+    return qty.value >= 1000
+      ? { quantity: round(qty.value / 1000), unit: 'kg' }
+      : { quantity: round(qty.value), unit: 'g' };
+  }
+  if (qty.kind === 'ml') {
+    return qty.value >= 1000
+      ? { quantity: round(qty.value / 1000), unit: 'l' }
+      : { quantity: round(qty.value), unit: 'ml' };
+  }
+  return { quantity: round(qty.value), unit: '' };
 }
 
 export interface Conversion {
@@ -143,21 +172,19 @@ export interface Conversion {
 }
 
 export function getConversions(
-  quantity: number,
-  unit: string,
+  qty: Quantity,
   ingredientName?: string,
 ): Conversion[] {
   const results: Conversion[] = [];
-  const unitLower = unit.toLowerCase().trim();
 
-  if (unitLower in VOLUME_TO_ML) {
-    const ml = quantity * VOLUME_TO_ML[unitLower];
+  if (qty.kind === 'ml') {
+    const ml = qty.value;
     results.push({ unit: 'ml', value: round(ml), label: `${round(ml)} ml` });
     if (ml >= 1000) {
       results.push({ unit: 'l', value: round(ml / 1000), label: `${round(ml / 1000)} l` });
     }
     for (const [u, factor] of Object.entries(VOLUME_TO_ML)) {
-      if (u === unitLower || u === 'ml' || u === 'l') continue;
+      if (u === 'ml' || u === 'l') continue;
       if (u === 'gallon' && ml < 1000) continue;
       if (u === 'quart' && ml < 200) continue;
       if (u === 'pint' && ml < 100) continue;
@@ -177,13 +204,13 @@ export function getConversions(
         }
       }
     }
-  } else if (unitLower in WEIGHT_TO_G) {
-    const g = quantity * WEIGHT_TO_G[unitLower];
+  } else if (qty.kind === 'gram') {
+    const g = qty.value;
     results.push({ unit: 'g', value: round(g), label: `${round(g)} g` });
     if (g >= 1000)
       results.push({ unit: 'kg', value: round(g / 1000), label: `${round(g / 1000)} kg` });
     for (const [u, factor] of Object.entries(WEIGHT_TO_G)) {
-      if (u === 'g' || u === 'kg' || u === unitLower) continue;
+      if (u === 'g' || u === 'kg') continue;
       if (u === 'lb' && g < 50) continue;
       results.push({ unit: u, value: round(g / factor), label: `${round(g / factor)} ${u}` });
     }
@@ -209,7 +236,8 @@ export function getConversions(
   const seen = new Set<string>();
   return results.filter((c) => {
     if (IMPERIAL_UNITS.has(c.unit)) return false;
-    if (c.label === `${quantity} ${unitLower}`) return false;
+    const d = displayQuantity(qty);
+    if (c.label === `${d.quantity} ${d.unit}`) return false;
     if (seen.has(c.unit)) return false;
     seen.add(c.unit);
     return true;
@@ -223,7 +251,7 @@ function round(n: number): number {
 const AU_TBSP_ML = 20;
 const METRIC_CUP_ML = 250;
 
-const IMPERIAL_UNITS = new Set(['fl_oz', 'pint', 'quart', 'gallon', 'oz', 'lb']);
+const IMPERIAL_UNITS = new Set(['floz', 'pint', 'quart', 'gallon', 'oz', 'lb']);
 
 export interface UnitDisplay {
   quantity: number;
@@ -231,21 +259,18 @@ export interface UnitDisplay {
 }
 
 export function getToggledDisplay(
-  quantity: number,
-  unit: string,
+  qty: Quantity,
+  displayUnit: string,
   modeIndex: number,
   ingredientName?: string,
 ): { display: UnitDisplay; totalModes: number } {
-  const unitLower = unit.toLowerCase().trim();
-  const original: UnitDisplay = { quantity, unit };
-
   let baseG: number | null = null;
   let baseMl: number | null = null;
 
-  if (unitLower in WEIGHT_TO_G) {
-    baseG = quantity * WEIGHT_TO_G[unitLower];
-  } else if (unitLower in VOLUME_TO_ML) {
-    baseMl = quantity * VOLUME_TO_ML[unitLower];
+  if (qty.kind === 'gram') {
+    baseG = qty.value;
+  } else if (qty.kind === 'ml') {
+    baseMl = qty.value;
   }
 
   if (ingredientName) {
@@ -255,6 +280,12 @@ export function getToggledDisplay(
       else if (baseMl !== null && baseG === null) baseG = baseMl * density;
     }
   }
+
+  const original = unitDisplayFromRaw(
+    qty.kind === 'gram' ? qty.value : qty.kind === 'ml' ? qty.value : qty.value,
+    displayUnit,
+    qty.kind,
+  );
 
   const availableModes: UnitDisplay[] = [original];
 
@@ -293,4 +324,20 @@ export function getToggledDisplay(
     display: availableModes[clampedIndex],
     totalModes: availableModes.length,
   };
+}
+
+function unitDisplayFromRaw(value: number, unit: string, kind: Quantity['kind']): UnitDisplay {
+  if (kind === 'gram') {
+    if (unit in WEIGHT_TO_G) {
+      return { quantity: round(value / WEIGHT_TO_G[unit]), unit };
+    }
+    return { quantity: round(value), unit: 'g' };
+  }
+  if (kind === 'ml') {
+    if (unit in VOLUME_TO_ML) {
+      return { quantity: round(value / VOLUME_TO_ML[unit]), unit };
+    }
+    return { quantity: round(value), unit: 'ml' };
+  }
+  return { quantity: round(value), unit };
 }

@@ -68,6 +68,13 @@ export interface IngredientSegment {
   unit: string;
 }
 
+export type QuantityKind = 'gram' | 'ml' | 'count';
+
+export interface Quantity {
+  value: number;
+  kind: QuantityKind;
+}
+
 export type ShoppingCategory =
   | 'produce'
   | 'dairy'

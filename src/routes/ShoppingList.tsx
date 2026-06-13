@@ -4,6 +4,7 @@ import { recipes, getProgress, updateProgress } from '@/lib/storage';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '@/lib/types';
 import type { Ingredient, ShoppingCategory, Recipe, RecipeProgress } from '@/lib/types';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
+import { toQuantity } from '@/lib/conversions';
 import ConversionPopover from '@/components/ConversionPopover';
 import styles from './ShoppingList.module.css';
 
@@ -162,10 +163,7 @@ export default function ShoppingList() {
                       </div>
                       {showPopover && ingredient && (
                         <ConversionPopover
-                          quantity={
-                            item.quantity
-                          }
-                          unit={ingredient.unit}
+                          quantity={toQuantity(item.quantity, ingredient.unit)}
                           ingredientName={ingredient.name}
                           onClose={() => setPopoverId(null)}
                         />
