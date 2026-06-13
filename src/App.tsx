@@ -11,7 +11,7 @@ import Settings from '@/routes/Settings';
 function ErrorFallback(err: Error, reset: () => void) {
   return (
     <div class={styles.error}>
-      <p>Something went wrong</p>
+      <p>{err.message || 'Something went wrong'}</p>
       <button class={styles.retryBtn} onClick={reset}>Try again</button>
     </div>
   );
