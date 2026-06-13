@@ -26,7 +26,6 @@ export default function CookingMode() {
   const isLastStep = createMemo(() => currentIdx() >= steps().length - 1);
   const isFirstStep = createMemo(() => currentIdx() <= 0);
   const [completed, setCompleted] = createSignal(false);
-  const [unitModes, setUnitModes] = createSignal<Record<string, number>>({});
 
   const ingredientLookup = createMemo(() => {
     const map = new Map<string, { name: string }>();
@@ -190,8 +189,8 @@ export default function CookingMode() {
                               const scaled = scaleQuantity(seg.quantity, originalServings(), targetServings());
                               const segQty = () => toQuantity(scaled, seg.unit);
                               const isChecked = () => checkedIngredients().has(seg.ingredientId);
-                              const modeKey = `${sub.id}:${seg.ingredientId}`;
-                              const modeIdx = () => unitModes()[modeKey] ?? 0;
+                              const modeKey = seg.ingredientId;
+                              const modeIdx = () => progress()?.ingredientUnitModes[modeKey] ?? 0;
                               const toggled = () => getToggledDisplay(segQty(), seg.unit, modeIdx(), ing?.name);
                               const hasToggle = () => toggled().totalModes > 1;
                               return (
@@ -201,8 +200,8 @@ export default function CookingMode() {
                                     classList={{ [styles.hasToggle]: hasToggle() }}
                                     onClick={() => {
                                       if (hasToggle()) {
-                                        const current = unitModes();
-                                        setUnitModes({ ...current, [modeKey]: (modeIdx() + 1) % toggled().totalModes });
+                                        const modes = { ...p.ingredientUnitModes, [modeKey]: (modeIdx() + 1) % toggled().totalModes };
+                                        updateProgress(r.id, { ingredientUnitModes: modes });
                                       }
                                     }}
                                     aria-label="Toggle unit"

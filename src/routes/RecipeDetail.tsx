@@ -14,7 +14,6 @@ export default function RecipeDetail() {
   const recipeId = params.id ?? '';
   const [showDelete, setShowDelete] = createSignal(false);
   const [stepPopoverId, setStepPopoverId] = createSignal<string | null>(null);
-  const [unitModes, setUnitModes] = createSignal<Record<string, number>>({});
 
   const maybeRecipe = recipes.find((x) => x.id === recipeId);
   if (!maybeRecipe) {
@@ -63,7 +62,7 @@ export default function RecipeDetail() {
             {recipe.content.ingredients.map((ing) => {
               const qty = scaleQuantity(ing.quantity, recipe.content.originalServings, servings());
               const ingQty = () => toQuantity(qty, ing.unit);
-              const modeIdx = () => unitModes()[ing.id] ?? 0;
+              const modeIdx = () => p?.ingredientUnitModes[ing.id] ?? 0;
               const toggled = () => getToggledDisplay(ingQty(), ing.unit, modeIdx(), ing.name);
               const hasToggle = () => toggled().totalModes > 1;
               return (
@@ -79,8 +78,8 @@ export default function RecipeDetail() {
                     classList={{ [styles.hasToggle]: hasToggle() }}
                     onClick={() => {
                       if (hasToggle()) {
-                        const current = unitModes();
-                        setUnitModes({ ...current, [ing.id]: (modeIdx() + 1) % toggled().totalModes });
+                        const modes = { ...p?.ingredientUnitModes ?? {}, [ing.id]: (modeIdx() + 1) % toggled().totalModes };
+                        updateProgress(recipe.id, { ingredientUnitModes: modes });
                       }
                     }}
                     aria-label="Toggle unit"

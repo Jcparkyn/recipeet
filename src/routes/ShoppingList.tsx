@@ -4,7 +4,7 @@ import { recipes, getProgress, updateProgress } from '@/lib/storage';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '@/lib/types';
 import type { Ingredient, ShoppingCategory, Recipe, RecipeProgress } from '@/lib/types';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
-import { toQuantity } from '@/lib/conversions';
+import { toQuantity, getToggledDisplay } from '@/lib/conversions';
 import ConversionPopover from '@/components/ConversionPopover';
 import styles from './ShoppingList.module.css';
 
@@ -135,6 +135,10 @@ export default function ShoppingList() {
                   const ingredient = r.content.ingredients.find(
                     (i) => i.id === firstId,
                   );
+                  const qty = () => toQuantity(item.quantity, item.unit);
+                  const modeIdx = () => p.ingredientUnitModes[firstId] ?? 0;
+                  const toggled = () => getToggledDisplay(qty(), item.unit, modeIdx(), item.name);
+                  const hasToggle = () => toggled().totalModes > 1;
                   return (
                     <li class={styles.item}>
                       <div class={styles.itemRow}>
@@ -157,9 +161,20 @@ export default function ShoppingList() {
                           {item.name}
                           {item.notes ? ` (${item.notes})` : ''}
                         </button>
-                        <span class={styles.itemQty}>
-                          {formatQuantity(item.quantity)} {item.unit}
-                        </span>
+                        <button
+                          class={styles.itemQty}
+                          classList={{ [styles.hasToggle]: hasToggle() }}
+                          onClick={() => {
+                            if (hasToggle()) {
+                              const modes = { ...p.ingredientUnitModes, [firstId]: (modeIdx() + 1) % toggled().totalModes };
+                              updateProgress(r.id, { ingredientUnitModes: modes });
+                            }
+                          }}
+                          aria-label="Toggle unit"
+                          disabled={!hasToggle()}
+                        >
+                          {formatQuantity(toggled().display.quantity)} {toggled().display.unit}
+                        </button>
                       </div>
                       {showPopover && ingredient && (
                         <ConversionPopover

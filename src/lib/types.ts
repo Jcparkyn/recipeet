@@ -21,6 +21,7 @@ export interface RecipeProgress {
   checkedSubsteps: string[];
   checkedIngredients: string[];
   currentCookingStep: number;
+  ingredientUnitModes: Record<string, number>;
 }
 
 export interface Ingredient {

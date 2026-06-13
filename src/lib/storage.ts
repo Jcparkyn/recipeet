@@ -16,12 +16,17 @@ function loadJson<T>(key: string, fallback: T): T {
   }
 }
 
+function migrateProgress(p: RecipeProgress): RecipeProgress {
+  if (!p.ingredientUnitModes) p.ingredientUnitModes = {};
+  return p;
+}
+
 export const [recipes, setRecipes] = createStore<Recipe[]>(
   loadJson(RECIPES_KEY, []),
 );
 
 export const [progresses, setProgress] = createStore<RecipeProgress[]>(
-  loadJson(PROGRESS_KEY, []),
+  loadJson<RecipeProgress[]>(PROGRESS_KEY, []).map(migrateProgress),
 );
 
 export const [settings, setInternalSettings] = createSignal<LLMSettings>(
@@ -55,6 +60,7 @@ export function addRecipe(recipe: Recipe) {
       checkedSteps: [],
       checkedSubsteps: [],
       checkedIngredients: [],
+      ingredientUnitModes: {},
       currentCookingStep: 0,
     });
   }));
