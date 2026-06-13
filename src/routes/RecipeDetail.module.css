@@ -116,6 +116,7 @@
   font-size: 0.9rem;
   padding: 6px 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
 }
@@ -199,4 +200,18 @@
   background: white;
   color: #2d6a4f;
   border: 1px solid #2d6a4f;
+}
+
+.stepImages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.stepImage {
+  width: 100%;
+  border-radius: 10px;
+  object-fit: contain;
 }

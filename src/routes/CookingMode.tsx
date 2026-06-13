@@ -15,6 +15,7 @@ export default function CookingMode() {
   const steps = createMemo(() => recipe()?.content.steps ?? []);
   const currentIdx = createMemo(() => progress()?.currentCookingStep ?? 0);
   const currentStep = createMemo(() => steps()[currentIdx()]);
+  const currentImages = createMemo(() => currentStep()?.images?.filter(Boolean) ?? []);
   const checkedSteps = createMemo(() => new Set(progress()?.checkedSteps));
   const checkedSubsteps = createMemo(() => new Set(progress()?.checkedSubsteps));
   const checkedIngredients = createMemo(() => new Set(progress()?.checkedIngredients));
@@ -207,6 +208,14 @@ export default function CookingMode() {
                 }}
               </For>
             </ul>
+
+            <Show when={currentImages().length > 0}>
+              <div class={styles.stepImages}>
+                {currentImages().map((url) => (
+                  <img class={styles.stepImage} src={url} alt="" loading="lazy" />
+                ))}
+              </div>
+            </Show>
           </div>
         </main>
 

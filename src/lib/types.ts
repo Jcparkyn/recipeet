@@ -38,6 +38,7 @@ export interface Step {
   order: number;
   substeps: SubStep[];
   notes?: string;
+  images?: string[];
 }
 
 export interface SubStep {

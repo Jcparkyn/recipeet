@@ -106,6 +106,13 @@ export default function RecipeDetail() {
                       </Show>
                     </>
                   )}
+                  {step.images && step.images.length > 0 && (
+                    <div class={styles.stepImages}>
+                      {step.images.map((url) => (
+                        <img class={styles.stepImage} src={url} alt="" loading="lazy" />
+                      ))}
+                    </div>
+                  )}
                 </li>
               );
             })}
