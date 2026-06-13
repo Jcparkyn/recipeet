@@ -28,15 +28,6 @@ export default function Settings() {
           <h2 class={styles.sectionTitle}>LLM Configuration</h2>
 
           <label class={styles.label}>
-            Provider
-            <input
-              class={styles.input}
-              value={settings().provider}
-              onInput={(e) => update('provider', e.currentTarget.value)}
-            />
-          </label>
-
-          <label class={styles.label}>
             API Key
             <input
               class={styles.input}

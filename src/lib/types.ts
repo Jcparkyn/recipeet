@@ -101,14 +101,12 @@ export const CATEGORY_ORDER: ShoppingCategory[] = [
 ];
 
 export interface LLMSettings {
-  provider: string;
   apiKey: string;
   baseUrl: string;
   model: string;
 }
 
 export const DEFAULT_LLM_SETTINGS: LLMSettings = {
-  provider: 'deepseek',
   apiKey: '',
   baseUrl: 'https://api.deepseek.com/v1',
   model: 'deepseek-v4-pro',

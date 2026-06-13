@@ -216,10 +216,6 @@ function isValidCategory(c: unknown): c is ShoppingCategory {
   return typeof c === 'string' && valid.includes(c as ShoppingCategory);
 }
 
-export function getParser(provider: string): RecipeParser {
-  switch (provider) {
-    case 'deepseek':
-    default:
-      return new DeepSeekParser();
-  }
+export function getParser(): RecipeParser {
+  return new DeepSeekParser();
 }

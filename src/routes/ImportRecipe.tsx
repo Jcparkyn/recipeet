@@ -35,7 +35,7 @@ export default function ImportRecipe() {
       throw new Error('Please set your API key in Settings first');
     }
 
-    const parser = getParser(s.provider);
+    const parser = getParser();
     const parsed = await parser.parse(content, s);
 
     return {
