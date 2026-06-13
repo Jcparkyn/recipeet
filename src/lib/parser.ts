@@ -89,6 +89,7 @@ export class DeepSeekParser implements RecipeParser {
 }
 
 function validateAndTransform(raw: Record<string, unknown>): ParseResult {
+  let nextId = 1;
   const warnings: string[] = [];
 
   if (!raw.title || typeof raw.title !== 'string') {
@@ -107,7 +108,7 @@ function validateAndTransform(raw: Record<string, unknown>): ParseResult {
   }
 
   const ingredients = raw.ingredients.map((ing: Record<string, unknown>) => ({
-    id: crypto.randomUUID(),
+    id: String(nextId++),
     name: String(ing.name || ''),
     quantity: Number(ing.quantity) || 0,
     unit: String(ing.unit || ''),
@@ -116,7 +117,7 @@ function validateAndTransform(raw: Record<string, unknown>): ParseResult {
   }));
 
   const steps = raw.steps.map((step: Record<string, unknown>, si: number) => ({
-    id: crypto.randomUUID(),
+    id: String(nextId++),
     title: String(step.title || `Step ${si + 1}`),
     order: typeof step.order === 'number' ? step.order : si,
     notes: step.notes ? String(step.notes) : undefined,
@@ -142,7 +143,7 @@ function validateAndTransform(raw: Record<string, unknown>): ParseResult {
           const segments = parseSegments(instruction, ingredients, linkedIngredients);
 
           return {
-            id: crypto.randomUUID(),
+            id: String(nextId++),
             instruction,
             segments,
             linkedIngredients,

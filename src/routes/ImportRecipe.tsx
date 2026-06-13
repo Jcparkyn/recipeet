@@ -39,7 +39,7 @@ export default function ImportRecipe() {
     const parsed = await parser.parse(content, s);
 
     return {
-      id: crypto.randomUUID(),
+      id: String(Date.now()),
       content: parsed.content,
       sourceUrl,
       createdAt: Date.now(),
