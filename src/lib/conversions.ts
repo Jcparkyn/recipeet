@@ -217,23 +217,7 @@ interface UnitDisplay {
   unit: string;
 }
 
-/**
- * Returns the display for a togglable ingredient quantity.
- *
- * Builds a list of available unit modes (weight via density, volume,
- * household tsp/tbsp/cup) and returns the display at the given mode index.
- * {@link modeIndex} is modulo-wrapped, so callers can increment freely
- * without worrying about bounds.
- *
- * For volume-first ingredients (>80 ml), the volume mode is moved to the
- * front of the list so ml/L is the default display.
- */
-export function getToggledDisplay(
-  qty: Quantity,
-  displayUnit: string,
-  modeIndex: number,
-  ingredientName?: string,
-): { display: UnitDisplay; totalModes: number } {
+export function getAvailableModes(qty: Quantity, density?: number): UnitDisplay[] {
   let baseG: number | null = null;
   let baseMl: number | null = null;
 
@@ -243,28 +227,29 @@ export function getToggledDisplay(
     baseMl = qty.value;
   }
 
-  if (ingredientName) {
-    const density = lookupDensity(ingredientName);
-    if (density) {
-      if (baseG !== null && baseMl === null) baseMl = baseG / density;
-      else if (baseMl !== null && baseG === null) baseG = baseMl * density;
-    }
+  if (density) {
+    if (baseG !== null && baseMl === null) baseMl = baseG / density;
+    else if (baseMl !== null && baseG === null) baseG = baseMl * density;
   }
 
-  const availableModes: UnitDisplay[] = [];
+  const modes: UnitDisplay[] = [];
 
   if (baseG !== null) {
     const d = baseG < 1000
       ? { quantity: baseG, unit: 'g' as const }
       : { quantity: baseG / 1000, unit: 'kg' as const };
-    availableModes.push(d);
+    modes.push(d);
   }
 
   if (baseMl !== null) {
     const d = baseMl < 1000
       ? { quantity: baseMl, unit: 'ml' as const }
       : { quantity: baseMl / 1000, unit: 'l' as const };
-    availableModes.push(d);
+    if (qty.kind == 'ml') {
+      modes.unshift(d);
+    } else {
+      modes.push(d);
+    }
   }
 
   if (baseMl !== null) {
@@ -272,23 +257,43 @@ export function getToggledDisplay(
     if (baseMl < VOLUME_TO_ML.tbsp) d = { quantity: baseMl / VOLUME_TO_ML.tsp, unit: 'tsp' };
     else if (baseMl <= 80) d = { quantity: baseMl / VOLUME_TO_ML.tbsp, unit: 'tbsp' };
     else d = { quantity: baseMl / VOLUME_TO_ML.cup, unit: 'cup' };
-    availableModes.push(d);
-  }
-
-  if (qty.kind === 'ml' && baseMl != null && baseMl <= 80) {
-    const volIdx = availableModes.findIndex((m) => m.unit === 'ml' || m.unit === 'l');
-    if (volIdx > 0) {
-      const [vol] = availableModes.splice(volIdx, 1);
-      availableModes.unshift(vol);
+    if (qty.kind === 'ml' && baseMl <= 80) {
+      // set as default for small quantities
+      modes.unshift(d);
+    } else {
+      modes.push(d);
     }
   }
 
-  if (availableModes.length === 0) {
+  return modes;
+}
+
+/**
+ * Returns the display for a togglable ingredient quantity.
+ *
+ * Builds a list of available unit modes (weight via density, volume,
+ * household tsp/tbsp/cup) and returns the display at the given mode index.
+ * {@link modeIndex} is modulo-wrapped, so callers can increment freely
+ * without worrying about bounds.
+ *
+ * For volume-first ingredients (<=80 ml), the volume mode is moved to the
+ * front of the list so ml/L is the default display.
+ */
+export function getToggledDisplay(
+  qty: Quantity,
+  displayUnit: string,
+  modeIndex: number,
+  ingredientName?: string,
+): { display: UnitDisplay; totalModes: number } {
+  const density = ingredientName ? lookupDensity(ingredientName) : undefined;
+  const modes = getAvailableModes(qty, density);
+
+  if (modes.length === 0) {
     return { display: { quantity: qty.value, unit: displayUnit }, totalModes: 0 };
   }
 
   return {
-    display: availableModes[modeIndex % availableModes.length],
-    totalModes: availableModes.length,
+    display: modes[modeIndex % modes.length],
+    totalModes: modes.length,
   };
 }
