@@ -47,6 +47,8 @@ export interface SubStep {
   instruction: string;
   segments?: InstructionSegment[];
   linkedIngredients?: LinkedIngredient[];
+  handsOnTime?: number;
+  waitTime?: number;
 }
 
 export interface LinkedIngredient {

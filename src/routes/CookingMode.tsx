@@ -164,6 +164,7 @@ export default function CookingMode() {
               <For each={currentStep()?.substeps ?? []}>
                 {(sub) => {
                   const checked = () => checkedSubsteps().has(sub.id);
+                  const hasTimes = () => (sub.handsOnTime ?? 0) > 0 || (sub.waitTime ?? 0) > 0;
                   return (
                     <li class={styles.substep}>
                       <button
@@ -222,6 +223,9 @@ export default function CookingMode() {
                             }}
                           </For>
                         </Show>
+                        {hasTimes() && (
+                          <>{(sub.handsOnTime ?? 0) > 0 && <span class={styles.timeHands}>Hands-on: {sub.handsOnTime}m</span>}{(sub.waitTime ?? 0) > 0 && <span class={styles.timeWait}>Wait: {sub.waitTime}m</span>}</>
+                        )}
                       </span>
                     </li>
                   );

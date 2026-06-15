@@ -170,6 +170,28 @@
   color: #aaa;
 }
 
+.timeHands {
+  background: #e8f5e9;
+  color: #2d6a4f;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.timeWait {
+  background: #fff3e0;
+  color: #e65100;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
 .footer {
   display: flex;
   align-items: center;

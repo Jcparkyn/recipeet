@@ -25,14 +25,14 @@ const SYSTEM_PROMPT = `You are a recipe parser. Given unstructured recipe text, 
       "notes"?: string,
       "images"?: string[],
       "substeps": [
-        { "instruction": string, "linkedIngredients"?: [{ "ingredientIndex": number, "quantity": number, "unit": string }] }
+        { "instruction": string, "handsOnTime"?: number, "waitTime"?: number, "linkedIngredients"?: [{ "ingredientIndex": number, "quantity": number, "unit": string }] }
       ]
     }
   ]
 }
 
 Rules:
-1. Estimate how long each step takes and include it in the "notes" field. Examples: "notes": "~20 minutes", "notes": "Preheat takes 15-20 min — start early", "notes": "~5 minutes". If a step has no significant time requirement, leave notes as an empty string or omit it.
+1. Include any general notes about a step (tips, warnings, explanations) in the "notes" field. Omit or leave empty if there are no notable notes. Do NOT put duration/timing info in notes.
 2. Reorder steps so that long-running background tasks (e.g. preheating oven, bringing water to a boil, marinating) start BEFORE shorter prep steps like chopping and measuring. The goal is that by the time the food is ready to go in, the oven is already hot or the water is already boiling.
 3. Prep work (chopping, measuring, marinating) should still come before cooking steps that depend on them.
 4. Time-sensitive prep (e.g. "cut meat before it goes in a hot pan") gets its own step BEFORE the cooking step that needs it.
@@ -44,6 +44,7 @@ Rules:
 10. linkedIngredients[].ingredientIndex refers to zero-based index in ingredients[].
 12. Extract preparation notes, substitutions, or special qualities from ingredient text (e.g. "cold, cubed", "peeled and diced", "or margarine"). Include in the "notes" field of each ingredient. Leave empty if none.
 13. Identify up to 2 relevant image URLs from the original page content (the markdown may contain ![alt](url) references) that illustrate each step. Include them in an "images" array on each step object. Only include images directly useful for understanding that specific step. Use an empty array if no relevant images exist.
+14. Estimate the time each substep takes. Include "handsOnTime" (active work in minutes, e.g. chopping, stirring) and "waitTime" (passive time in minutes, e.g. baking, simmering, resting). Both are numbers in minutes, omit if zero. Examples: dicing chicken is {"handsOnTime": 3}; frying is {"handsOnTime": 2, "waitTime": 8}.
 
 11. Do NOT convert units. Return units exactly as they appear in the source text. Use only these unit strings: ml, l, g, kg, oz, lb, cup, tbsp, tsp, floz, pint, quart, gallon. For items without a unit (e.g. eggs, cloves, pinches of salt), use an empty string "".
 
@@ -143,6 +144,8 @@ function validateAndTransform(raw: Record<string, unknown>): ParseResult {
             instruction,
             segments,
             linkedIngredients,
+            handsOnTime: typeof sub.handsOnTime === 'number' && sub.handsOnTime > 0 ? sub.handsOnTime : undefined,
+            waitTime: typeof sub.waitTime === 'number' && sub.waitTime > 0 ? sub.waitTime : undefined,
           };
         })
       : [],
