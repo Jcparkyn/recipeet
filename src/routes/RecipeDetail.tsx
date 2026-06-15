@@ -78,7 +78,7 @@ export default function RecipeDetail() {
                     classList={{ [styles.hasToggle]: hasToggle() }}
                     onClick={() => {
                       if (hasToggle()) {
-                        const modes = { ...p?.ingredientUnitModes ?? {}, [ing.id]: (modeIdx() + 1) % toggled().totalModes };
+                        const modes = { ...p?.ingredientUnitModes ?? {}, [ing.id]: modeIdx() + 1 };
                         updateProgress(recipe.id, { ingredientUnitModes: modes });
                       }
                     }}

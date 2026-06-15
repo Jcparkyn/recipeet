@@ -9,6 +9,7 @@
 ## Commands
 
 Check package.json for commands.
+Run with `npm run build`, `npm run lint` etc., not npx.
 
 ## Architecture
 

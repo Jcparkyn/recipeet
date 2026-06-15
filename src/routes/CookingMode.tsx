@@ -200,7 +200,7 @@ export default function CookingMode() {
                                     classList={{ [styles.hasToggle]: hasToggle() }}
                                     onClick={() => {
                                       if (hasToggle()) {
-                                        const modes = { ...p.ingredientUnitModes, [modeKey]: (modeIdx() + 1) % toggled().totalModes };
+                                        const modes = { ...p.ingredientUnitModes, [modeKey]: modeIdx() + 1 };
                                         updateProgress(r.id, { ingredientUnitModes: modes });
                                       }
                                     }}

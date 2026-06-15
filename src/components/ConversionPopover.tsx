@@ -1,5 +1,6 @@
 import { Portal } from 'solid-js/web';
 import { getConversions, displayQuantity } from '@/lib/conversions';
+import { formatQuantity } from '@/lib/scaling';
 import type { Quantity } from '@/lib/types';
 import styles from './ConversionPopover.module.css';
 
@@ -19,7 +20,7 @@ export default function ConversionPopover(props: Props) {
       <div class={styles.overlay} onClick={props.onClose}>
         <div class={styles.popover} onClick={(e) => e.stopPropagation()}>
           <div class={styles.header}>
-            <strong>{display().quantity} {display().unit}</strong>
+            <strong>{formatQuantity(display().quantity)} {display().unit}</strong>
             {props.ingredientName && (
               <span class={styles.name}>{props.ingredientName}</span>
             )}

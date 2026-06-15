@@ -1,4 +1,5 @@
 import type { Quantity } from './types';
+import { formatQuantity } from './scaling';
 
 const VOLUME_TO_ML: Record<string, number> = {
   tsp: 5,
@@ -144,15 +145,15 @@ export function toQuantity(quantity: number, unit: string): Quantity {
 export function displayQuantity(qty: Quantity): UnitDisplay {
   if (qty.kind === 'gram') {
     return qty.value >= 1000
-      ? { quantity: round(qty.value / 1000), unit: 'kg' }
-      : { quantity: round(qty.value), unit: 'g' };
+      ? { quantity: qty.value / 1000, unit: 'kg' }
+      : { quantity: qty.value, unit: 'g' };
   }
   if (qty.kind === 'ml') {
     return qty.value >= 1000
-      ? { quantity: round(qty.value / 1000), unit: 'l' }
-      : { quantity: round(qty.value), unit: 'ml' };
+      ? { quantity: qty.value / 1000, unit: 'l' }
+      : { quantity: qty.value, unit: 'ml' };
   }
-  return { quantity: round(qty.value), unit: '' };
+  return { quantity: qty.value, unit: '' };
 }
 
 interface Conversion {
@@ -183,42 +184,50 @@ export function getConversions(
 
   if (g !== null) {
     if (g < 1000) {
-      results.push({ unit: 'g', value: round(g), label: `${round(g)} g` });
+      results.push({ unit: 'g', value: g, label: `${formatQuantity(g)} g` });
     } else {
-      results.push({ unit: 'kg', value: round(g / 1000), label: `${round(g / 1000)} kg` });
+      const kg = g / 1000;
+      results.push({ unit: 'kg', value: kg, label: `${formatQuantity(kg)} kg` });
     }
   }
 
   if (ml !== null) {
     if (ml <= 40) {
-      results.push({ unit: 'tsp', value: round(ml / VOLUME_TO_ML.tsp), label: `${round(ml / VOLUME_TO_ML.tsp)} tsp` });
+      const tsp = ml / VOLUME_TO_ML.tsp;
+      results.push({ unit: 'tsp', value: tsp, label: `${formatQuantity(tsp)} tsp` });
     }
     if (ml <= 80) {
-      results.push({ unit: 'tbsp', value: round(ml / VOLUME_TO_ML.tbsp), label: `${round(ml / VOLUME_TO_ML.tbsp)} tbsp` });
+      const tbsp = ml / VOLUME_TO_ML.tbsp;
+      results.push({ unit: 'tbsp', value: tbsp, label: `${formatQuantity(tbsp)} tbsp` });
     }
     if (ml < 1000) {
-      results.push({ unit: 'ml', value: round(ml), label: `${round(ml)} ml` });
+      results.push({ unit: 'ml', value: ml, label: `${formatQuantity(ml)} ml` });
     } else {
-      results.push({ unit: 'l', value: round(ml / 1000), label: `${round(ml / 1000)} l` });
+      const l = ml / 1000;
+      results.push({ unit: 'l', value: l, label: `${formatQuantity(l)} l` });
     }
   }
 
   const displayed = displayQuantity(qty);
-  return results.filter((c) => c.label !== `${displayed.quantity} ${displayed.unit}`);
+  return results.filter((c) => c.label !== `${formatQuantity(displayed.quantity)} ${displayed.unit}`);
 }
-
-function round(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
-const AU_TBSP_ML = 20;
-const METRIC_CUP_ML = 250;
 
 interface UnitDisplay {
   quantity: number;
   unit: string;
 }
 
+/**
+ * Returns the display for a togglable ingredient quantity.
+ *
+ * Builds a list of available unit modes (weight via density, volume,
+ * household tsp/tbsp/cup) and returns the display at the given mode index.
+ * {@link modeIndex} is modulo-wrapped, so callers can increment freely
+ * without worrying about bounds.
+ *
+ * For volume-first ingredients (>80 ml), the volume mode is moved to the
+ * front of the list so ml/L is the default display.
+ */
 export function getToggledDisplay(
   qty: Quantity,
   displayUnit: string,
@@ -242,63 +251,44 @@ export function getToggledDisplay(
     }
   }
 
-  const original = unitDisplayFromRaw(
-    qty.kind === 'gram' ? qty.value : qty.kind === 'ml' ? qty.value : qty.value,
-    displayUnit,
-    qty.kind,
-  );
+  const availableModes: UnitDisplay[] = [];
 
-  const availableModes: UnitDisplay[] = [original];
-
-  function sameDisplay(a: UnitDisplay, b: UnitDisplay) {
-    return a.unit === b.unit && Math.abs(a.quantity - b.quantity) < 0.005;
+  if (baseG !== null) {
+    const d = baseG < 1000
+      ? { quantity: baseG, unit: 'g' as const }
+      : { quantity: baseG / 1000, unit: 'kg' as const };
+    availableModes.push(d);
   }
 
-  function addWeight(g: number) {
-    const d = g < 1000
-      ? { quantity: round(g), unit: 'g' as const }
-      : { quantity: round(g / 1000), unit: 'kg' as const };
-    if (!sameDisplay(d, original)) availableModes.push(d);
+  if (baseMl !== null) {
+    const d = baseMl < 1000
+      ? { quantity: baseMl, unit: 'ml' as const }
+      : { quantity: baseMl / 1000, unit: 'l' as const };
+    availableModes.push(d);
   }
 
-  function addVolume(ml: number) {
-    const d = ml < 1000
-      ? { quantity: round(ml), unit: 'ml' as const }
-      : { quantity: round(ml / 1000), unit: 'l' as const };
-    if (!sameDisplay(d, original)) availableModes.push(d);
-  }
-
-  function addHousehold(ml: number) {
+  if (baseMl !== null) {
     let d: UnitDisplay;
-    if (ml < 10) d = { quantity: round(ml / 5), unit: 'tsp' };
-    else if (ml < 60) d = { quantity: round(ml / AU_TBSP_ML), unit: 'tbsp' };
-    else d = { quantity: round(ml / METRIC_CUP_ML), unit: 'cup' };
-    if (!sameDisplay(d, original)) availableModes.push(d);
+    if (baseMl < VOLUME_TO_ML.tbsp) d = { quantity: baseMl / VOLUME_TO_ML.tsp, unit: 'tsp' };
+    else if (baseMl <= 80) d = { quantity: baseMl / VOLUME_TO_ML.tbsp, unit: 'tbsp' };
+    else d = { quantity: baseMl / VOLUME_TO_ML.cup, unit: 'cup' };
+    availableModes.push(d);
   }
 
-  if (baseG !== null) addWeight(baseG);
-  if (baseMl !== null) addVolume(baseMl);
-  if (baseMl !== null) addHousehold(baseMl);
+  if (qty.kind === 'ml' && baseMl != null && baseMl <= 80) {
+    const volIdx = availableModes.findIndex((m) => m.unit === 'ml' || m.unit === 'l');
+    if (volIdx > 0) {
+      const [vol] = availableModes.splice(volIdx, 1);
+      availableModes.unshift(vol);
+    }
+  }
 
-  const clampedIndex = ((modeIndex % availableModes.length) + availableModes.length) % availableModes.length;
+  if (availableModes.length === 0) {
+    return { display: { quantity: qty.value, unit: displayUnit }, totalModes: 0 };
+  }
+
   return {
-    display: availableModes[clampedIndex],
+    display: availableModes[modeIndex % availableModes.length],
     totalModes: availableModes.length,
   };
-}
-
-function unitDisplayFromRaw(value: number, unit: string, kind: Quantity['kind']): UnitDisplay {
-  if (kind === 'gram') {
-    if (unit in WEIGHT_TO_G) {
-      return { quantity: round(value / WEIGHT_TO_G[unit]), unit };
-    }
-    return { quantity: round(value), unit: 'g' };
-  }
-  if (kind === 'ml') {
-    if (unit in VOLUME_TO_ML) {
-      return { quantity: round(value / VOLUME_TO_ML[unit]), unit };
-    }
-    return { quantity: round(value), unit: 'ml' };
-  }
-  return { quantity: round(value), unit };
 }
