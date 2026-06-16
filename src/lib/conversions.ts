@@ -4,7 +4,7 @@ const VOLUME_TO_ML: Record<string, number> = {
   tsp: 5,
   tbsp: 20,
   floz: 30,
-  cup: 240,
+  cup: 250,
   pint: 480,
   quart: 960,
   gallon: 3840,
