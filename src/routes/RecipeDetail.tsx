@@ -50,7 +50,7 @@ export default function RecipeDetail() {
   function commitEdit() {
     const newTitle = editValue().trim();
     if (newTitle && newTitle !== recipe.content.title) {
-      updateRecipe(recipe.id, { content: { ...recipe.content, title: newTitle } });
+      updateRecipe(recipe.id, (r) => { r.content.title = newTitle; });
     }
     setEditing(false);
   }

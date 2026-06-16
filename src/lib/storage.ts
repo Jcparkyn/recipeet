@@ -67,11 +67,12 @@ export function addRecipe(recipe: Recipe) {
   persistProgress();
 }
 
-export function updateRecipe(id: string, patch: Partial<Recipe>) {
-  setRecipes(produce((r) => {
-    const idx = r.findIndex((recipe) => recipe.id === id);
+export function updateRecipe(id: string, mutate: (r: Recipe) => void) {
+  setRecipes(produce((arr) => {
+    const idx = arr.findIndex((recipe) => recipe.id === id);
     if (idx !== -1) {
-      Object.assign(r[idx], patch, { updatedAt: Date.now() });
+      mutate(arr[idx]);
+      arr[idx].updatedAt = Date.now();
     }
   }));
   persistRecipes();
