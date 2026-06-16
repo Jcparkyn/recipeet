@@ -7,7 +7,6 @@ import type { Ingredient, ShoppingCategory } from '@/lib/types';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
 import { getToggledDisplay, toQuantity } from '@/lib/conversions';
 import ServingsScaler from '@/components/ServingsScaler';
-import ConversionPopover from '@/components/ConversionPopover';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import styles from './RecipeDetail.module.css';
 
@@ -26,7 +25,6 @@ export default function RecipeDetail() {
   const recipeId = params.id ?? '';
   const [showDelete, setShowDelete] = createSignal(false);
   const [stepPopoverId, setStepPopoverId] = createSignal<string | null>(null);
-  const [ingPopoverId, setIngPopoverId] = createSignal<string | null>(null);
 
   const maybeRecipe = recipes.find((x) => x.id === recipeId);
   if (!maybeRecipe) {
@@ -203,10 +201,6 @@ export default function RecipeDetail() {
                   {cat.items.map((item) => {
                     const itemChecked = item.ids.every((id) => checked().has(id));
                     const firstId = item.ids[0];
-                    const showPopover = ingPopoverId() === firstId;
-                    const ingredient = recipe.content.ingredients.find(
-                      (i) => i.id === firstId,
-                    );
                     const qty = () => toQuantity(item.quantity, item.unit);
                     const modeIdx = () => p?.ingredientUnitModes[firstId] ?? 0;
                     const toggled = () =>
@@ -226,9 +220,9 @@ export default function RecipeDetail() {
                         </button>
                         <button
                           class={styles.ingName}
-                          onClick={() =>
-                            setIngPopoverId(showPopover ? null : firstId)
-                          }
+                          onClick={() => {
+                            for (const id of item.ids) toggleItem(id);
+                          }}
                         >
                           {item.name}
                           {item.notes && item.notes.length < 50 && (
@@ -255,16 +249,6 @@ export default function RecipeDetail() {
                           {formatQuantity(toggled().display.quantity)}{' '}
                           {toggled().display.unit}
                         </button>
-                        {showPopover && ingredient && (
-                          <ConversionPopover
-                            quantity={toQuantity(
-                              item.quantity,
-                              ingredient.unit,
-                            )}
-                            ingredientName={ingredient.name}
-                            onClose={() => setIngPopoverId(null)}
-                          />
-                        )}
                       </li>
                     );
                   })}

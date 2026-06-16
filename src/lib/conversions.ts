@@ -1,5 +1,4 @@
 import type { Quantity } from './types';
-import { formatQuantity } from './scaling';
 
 const VOLUME_TO_ML: Record<string, number> = {
   tsp: 5,
@@ -140,76 +139,6 @@ export function toQuantity(quantity: number, unit: string): Quantity {
     return { value: quantity * WEIGHT_TO_G[u], kind: 'gram' };
   }
   return { value: quantity, kind: 'count' };
-}
-
-export function displayQuantity(qty: Quantity): UnitDisplay {
-  if (qty.kind === 'gram') {
-    return qty.value >= 1000
-      ? { quantity: qty.value / 1000, unit: 'kg' }
-      : { quantity: qty.value, unit: 'g' };
-  }
-  if (qty.kind === 'ml') {
-    return qty.value >= 1000
-      ? { quantity: qty.value / 1000, unit: 'l' }
-      : { quantity: qty.value, unit: 'ml' };
-  }
-  return { quantity: qty.value, unit: '' };
-}
-
-interface Conversion {
-  unit: string;
-  value: number;
-  label: string;
-}
-
-export function getConversions(
-  qty: Quantity,
-  ingredientName?: string,
-): Conversion[] {
-  const results: Conversion[] = [];
-
-  let ml: number | null = null;
-  let g: number | null = null;
-
-  if (qty.kind === 'ml') ml = qty.value;
-  else if (qty.kind === 'gram') g = qty.value;
-
-  if (ingredientName && (ml !== null || g !== null)) {
-    const density = lookupDensity(ingredientName);
-    if (density) {
-      if (ml !== null && g === null) g = ml * density;
-      else if (g !== null && ml === null) ml = g / density;
-    }
-  }
-
-  if (g !== null) {
-    if (g < 1000) {
-      results.push({ unit: 'g', value: g, label: `${formatQuantity(g)} g` });
-    } else {
-      const kg = g / 1000;
-      results.push({ unit: 'kg', value: kg, label: `${formatQuantity(kg)} kg` });
-    }
-  }
-
-  if (ml !== null) {
-    if (ml <= 40) {
-      const tsp = ml / VOLUME_TO_ML.tsp;
-      results.push({ unit: 'tsp', value: tsp, label: `${formatQuantity(tsp)} tsp` });
-    }
-    if (ml <= 80) {
-      const tbsp = ml / VOLUME_TO_ML.tbsp;
-      results.push({ unit: 'tbsp', value: tbsp, label: `${formatQuantity(tbsp)} tbsp` });
-    }
-    if (ml < 1000) {
-      results.push({ unit: 'ml', value: ml, label: `${formatQuantity(ml)} ml` });
-    } else {
-      const l = ml / 1000;
-      results.push({ unit: 'l', value: l, label: `${formatQuantity(l)} l` });
-    }
-  }
-
-  const displayed = displayQuantity(qty);
-  return results.filter((c) => c.label !== `${formatQuantity(displayed.quantity)} ${displayed.unit}`);
 }
 
 interface UnitDisplay {
