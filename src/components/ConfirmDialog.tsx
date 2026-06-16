@@ -3,6 +3,7 @@ import styles from './ConfirmDialog.module.css';
 
 interface Props {
   message: string;
+  confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -15,7 +16,7 @@ export default function ConfirmDialog(props: Props) {
           <p class={styles.message}>{props.message}</p>
           <div class={styles.actions}>
             <button class={styles.cancelBtn} onClick={props.onCancel}>Cancel</button>
-            <button class={styles.confirmBtn} onClick={props.onConfirm}>Delete</button>
+            <button class={styles.confirmBtn} onClick={props.onConfirm}>{props.confirmLabel ?? 'Delete'}</button>
           </div>
         </div>
       </div>

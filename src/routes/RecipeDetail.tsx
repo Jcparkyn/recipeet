@@ -23,6 +23,7 @@ export default function RecipeDetail() {
   const navigate = useNavigate();
   const recipeId = params.id ?? '';
   const [showDelete, setShowDelete] = createSignal(false);
+  const [showReset, setShowReset] = createSignal(false);
   const [stepPopoverId, setStepPopoverId] = createSignal<string | null>(null);
 
   const maybeRecipe = recipes.find((x) => x.id === recipeId);
@@ -68,6 +69,19 @@ export default function RecipeDetail() {
   }
   const p = getProgress(recipeId);
   const servings = () => p?.currentServings ?? recipe.content.originalServings;
+
+  const hasProgress = createMemo(() => {
+    if (!p) return false;
+    return (
+      p.currentServings !== recipe.content.originalServings ||
+      p.checkedShoppingItems.length > 0 ||
+      p.checkedSteps.length > 0 ||
+      p.checkedSubsteps.length > 0 ||
+      p.checkedIngredients.length > 0 ||
+      p.currentCookingStep !== 0 ||
+      Object.keys(p.ingredientUnitModes).length > 0
+    );
+  });
 
   function setServings(n: number) {
     updateProgress(recipe.id, { currentServings: n });
@@ -314,6 +328,14 @@ export default function RecipeDetail() {
       </main>
 
       <footer class={styles.footer}>
+        <Show when={hasProgress()}>
+          <button
+            class={styles.btnReset}
+            onClick={() => setShowReset(true)}
+          >
+            Reset Progress
+          </button>
+        </Show>
         <button
           class={styles.btn}
           onClick={() => navigate(`/recipe/${recipe.id}/cook`)}
@@ -331,6 +353,26 @@ export default function RecipeDetail() {
             navigate('/');
           }}
           onCancel={() => setShowDelete(false)}
+        />
+      )}
+
+      {showReset() && (
+        <ConfirmDialog
+          message="Reset all progress for this recipe?"
+          confirmLabel="Reset"
+          onConfirm={() => {
+            setShowReset(false);
+            updateProgress(recipe.id, {
+              currentServings: recipe.content.originalServings,
+              checkedShoppingItems: [],
+              checkedSteps: [],
+              checkedSubsteps: [],
+              checkedIngredients: [],
+              currentCookingStep: 0,
+              ingredientUnitModes: {},
+            });
+          }}
+          onCancel={() => setShowReset(false)}
         />
       )}
     </div>

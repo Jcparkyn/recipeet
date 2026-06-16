@@ -324,6 +324,22 @@
   cursor: pointer;
 }
 
+.btnReset {
+  padding: 14px 20px;
+  border: 2px solid #ccc;
+  border-radius: 12px;
+  background: transparent;
+  color: #666;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btnReset:hover {
+  border-color: #999;
+  color: #333;
+}
+
 .stepImages {
   display: flex;
   flex-direction: column;
