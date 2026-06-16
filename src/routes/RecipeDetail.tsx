@@ -1,7 +1,7 @@
 import { createMemo, createSignal, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { useParams, useNavigate } from '@solidjs/router';
-import { recipes, getProgress, removeRecipe, updateProgress } from '@/lib/storage';
+import { recipes, getProgress, removeRecipe, updateRecipe, updateProgress } from '@/lib/storage';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '@/lib/types';
 import type { Ingredient, ShoppingCategory } from '@/lib/types';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
@@ -38,6 +38,37 @@ export default function RecipeDetail() {
     );
   }
   const recipe = maybeRecipe;
+
+  const [editing, setEditing] = createSignal(false);
+  const [editValue, setEditValue] = createSignal(recipe.content.title);
+  let titleInputRef!: HTMLInputElement;
+
+  function startEdit() {
+    setEditValue(recipe.content.title);
+    setEditing(true);
+    queueMicrotask(() => titleInputRef?.select());
+  }
+
+  function commitEdit() {
+    const newTitle = editValue().trim();
+    if (newTitle && newTitle !== recipe.content.title) {
+      updateRecipe(recipe.id, { content: { ...recipe.content, title: newTitle } });
+    }
+    setEditing(false);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+  }
+
+  function handleTitleKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit();
+    } else if (e.key === 'Escape') {
+      cancelEdit();
+    }
+  }
   const p = getProgress(recipeId);
   const servings = () => p?.currentServings ?? recipe.content.originalServings;
 
@@ -101,7 +132,28 @@ export default function RecipeDetail() {
           ←
         </button>
         <div class={styles.headerInfo}>
-          <h1 class={styles.title}>{recipe.content.title}</h1>
+          {editing() ? (
+            <input
+              ref={(el) => { titleInputRef = el; }}
+              class={styles.titleInput}
+              type="text"
+              value={editValue()}
+              onInput={(e) => setEditValue(e.currentTarget.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleTitleKeyDown}
+            />
+          ) : (
+            <div class={styles.titleRow}>
+              <h1 class={styles.title}>{recipe.content.title}</h1>
+              <button
+                class={styles.editBtn}
+                onClick={startEdit}
+                aria-label="Rename recipe"
+              >
+                ✎
+              </button>
+            </div>
+          )}
           {recipe.sourceUrl && <span class={styles.source}>{recipe.sourceUrl}</span>}
         </div>
         <button class={styles.deleteBtn} onClick={handleDelete} aria-label="Delete">
