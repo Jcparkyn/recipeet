@@ -25,6 +25,27 @@ export default function CookingMode() {
 
   const isLastStep = createMemo(() => currentIdx() >= steps().length - 1);
   const isFirstStep = createMemo(() => currentIdx() <= 0);
+  const handsOnTimes = createMemo(() => {
+    const allSteps = steps();
+    const checkSubs = checkedSubsteps();
+    const idx = currentIdx();
+    let completedTime = 0;
+    let totalTime = 0;
+    for (let i = 0; i < allSteps.length; i++) {
+      for (const sub of allSteps[i].substeps) {
+        const time = sub.handsOnTime ?? 0;
+        totalTime += time;
+        if (i < idx || (i === idx && checkSubs.has(sub.id))) {
+          completedTime += time;
+        }
+      }
+    }
+    const percent = totalTime === 0
+      ? ((idx + 1) / allSteps.length) * 100
+      : (completedTime / totalTime) * 100;
+    return { completedTime, totalTime, percent };
+  });
+
   const [completed, setCompleted] = createSignal(false);
 
   const ingredientLookup = createMemo(() => {
@@ -137,11 +158,15 @@ export default function CookingMode() {
             <span class={styles.stepCount}>
               Step {currentIdx() + 1} of {steps().length}
             </span>
-            <div class={styles.progressBar}>
-              <div
-                class={styles.progressFill}
-                style={{ width: `${((currentIdx() + 1) / steps().length) * 100}%` }}
-              />
+            <div class={styles.progressRow}>
+              <span class={styles.progressLabel}>{handsOnTimes().completedTime}m</span>
+              <div class={styles.progressBar}>
+                <div
+                  class={styles.progressFill}
+                  style={{ width: `${handsOnTimes().percent}%` }}
+                />
+              </div>
+              <span class={styles.progressLabel}>{handsOnTimes().totalTime - handsOnTimes().completedTime}m</span>
             </div>
           </div>
           <div class={styles.spacer} />

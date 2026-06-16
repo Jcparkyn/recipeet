@@ -35,7 +35,20 @@
   text-align: center;
 }
 
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressLabel {
+  font-size: 0.7rem;
+  color: #999;
+  white-space: nowrap;
+}
+
 .progressBar {
+  flex: 1;
   height: 4px;
   background: #eee;
   border-radius: 2px;
