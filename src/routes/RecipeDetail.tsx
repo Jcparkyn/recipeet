@@ -75,7 +75,6 @@ export default function RecipeDetail() {
     return (
       p.currentServings !== recipe.content.originalServings ||
       p.checkedShoppingItems.length > 0 ||
-      p.checkedSteps.length > 0 ||
       p.checkedSubsteps.length > 0 ||
       p.checkedIngredients.length > 0 ||
       p.currentCookingStep !== 0 ||
@@ -84,7 +83,7 @@ export default function RecipeDetail() {
   });
 
   function setServings(n: number) {
-    updateProgress(recipe.id, { currentServings: n });
+    updateProgress(recipe.id, (p) => { p.currentServings = n; });
   }
 
   function handleDelete() {
@@ -106,7 +105,7 @@ export default function RecipeDetail() {
     } else {
       current.add(id);
     }
-    updateProgress(recipe.id, { checkedShoppingItems: [...current] });
+    updateProgress(recipe.id, (p) => { p.checkedShoppingItems = [...current]; });
   }
 
   function toggleCategory(ingredients: GroupedIngredient[]) {
@@ -121,7 +120,7 @@ export default function RecipeDetail() {
         }
       }
     }
-    updateProgress(recipe.id, { checkedShoppingItems: [...current] });
+    updateProgress(recipe.id, (p) => { p.checkedShoppingItems = [...current]; });
   }
 
   const cats = createMemo(() => {
@@ -264,9 +263,7 @@ export default function RecipeDetail() {
                                 ...(p?.ingredientUnitModes ?? {}),
                                 [firstId]: modeIdx() + 1,
                               };
-                              updateProgress(recipe.id, {
-                                ingredientUnitModes: modes,
-                              });
+                              updateProgress(recipe.id, (p) => { p.ingredientUnitModes = modes; });
                             }
                           }}
                           aria-label="Toggle unit"
@@ -362,14 +359,13 @@ export default function RecipeDetail() {
           confirmLabel="Reset"
           onConfirm={() => {
             setShowReset(false);
-            updateProgress(recipe.id, {
-              currentServings: recipe.content.originalServings,
-              checkedShoppingItems: [],
-              checkedSteps: [],
-              checkedSubsteps: [],
-              checkedIngredients: [],
-              currentCookingStep: 0,
-              ingredientUnitModes: {},
+            updateProgress(recipe.id, (p) => {
+              p.currentServings = recipe.content.originalServings;
+              p.checkedShoppingItems = [];
+              p.checkedSubsteps = [];
+              p.checkedIngredients = [];
+              p.currentCookingStep = 0;
+              p.ingredientUnitModes = {};
             });
           }}
           onCancel={() => setShowReset(false)}

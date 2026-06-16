@@ -17,7 +17,6 @@ export interface RecipeProgress {
   recipeId: string;
   currentServings: number;
   checkedShoppingItems: string[];
-  checkedSteps: string[];
   checkedSubsteps: string[];
   checkedIngredients: string[];
   currentCookingStep: number;

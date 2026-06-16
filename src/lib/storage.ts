@@ -57,7 +57,6 @@ export function addRecipe(recipe: Recipe) {
       recipeId: recipe.id,
       currentServings: recipe.content.originalServings,
       checkedShoppingItems: [],
-      checkedSteps: [],
       checkedSubsteps: [],
       checkedIngredients: [],
       ingredientUnitModes: {},
@@ -95,12 +94,11 @@ export function getProgress(recipeId: string): RecipeProgress | undefined {
   return progresses.find((p) => p.recipeId === recipeId);
 }
 
-export function updateProgress(recipeId: string, patch: Partial<RecipeProgress>) {
+export function updateProgress(recipeId: string, mutate: (p: RecipeProgress) => void) {
   setProgress(
-    produce((p) => {
-      const idx = p.findIndex((x) => x.recipeId === recipeId);
-      if (idx !== -1) Object.assign(p[idx], patch);
-      else if (patch.recipeId) p.push(patch as RecipeProgress);
+    produce((arr) => {
+      const idx = arr.findIndex((x) => x.recipeId === recipeId);
+      if (idx !== -1) mutate(arr[idx]);
     }),
   );
   persistProgress();

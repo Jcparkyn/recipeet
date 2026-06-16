@@ -17,11 +17,14 @@ export default function CookingMode() {
   const currentIdx = createMemo(() => progress()?.currentCookingStep ?? 0);
   const currentStep = createMemo(() => steps()[currentIdx()]);
   const currentImages = createMemo(() => currentStep()?.images?.filter(Boolean) ?? []);
-  const checkedSteps = createMemo(() => new Set(progress()?.checkedSteps));
   const checkedSubsteps = createMemo(() => new Set(progress()?.checkedSubsteps));
   const checkedIngredients = createMemo(() => new Set(progress()?.checkedIngredients));
 
-  const stepChecked = createMemo(() => checkedSteps().has(currentStep()?.id ?? ''));
+  const stepChecked = createMemo(() => {
+    const step = currentStep();
+    if (!step) return false;
+    return step.substeps.length > 0 && step.substeps.every((sub) => checkedSubsteps().has(sub.id));
+  });
 
   const isLastStep = createMemo(() => currentIdx() >= steps().length - 1);
   const isFirstStep = createMemo(() => currentIdx() <= 0);
@@ -68,7 +71,7 @@ export default function CookingMode() {
     } else {
       current.add(ingredientId);
     }
-    updateProgress(p.recipeId, { checkedIngredients: [...current] });
+    updateProgress(p.recipeId, (pp) => { pp.checkedIngredients = [...current]; });
   }
 
   function toggleSubstep(subId: string) {
@@ -80,34 +83,28 @@ export default function CookingMode() {
     } else {
       current.add(subId);
     }
-    updateProgress(p.recipeId, { checkedSubsteps: [...current] });
+    updateProgress(p.recipeId, (pp) => { pp.checkedSubsteps = [...current]; });
   }
 
   function toggleStep() {
     const p = progress();
     const step = currentStep();
     if (!p || !step) return;
-    const currentSteps = new Set(p.checkedSteps);
     const currentSubs = new Set(p.checkedSubsteps);
 
-    if (currentSteps.has(step.id)) {
-      currentSteps.delete(step.id);
+    if (stepChecked()) {
       for (const sub of step.substeps) currentSubs.delete(sub.id);
     } else {
-      currentSteps.add(step.id);
       for (const sub of step.substeps) currentSubs.add(sub.id);
     }
 
-    updateProgress(p.recipeId, {
-      checkedSteps: [...currentSteps],
-      checkedSubsteps: [...currentSubs],
-    });
+    updateProgress(p.recipeId, (pp) => { pp.checkedSubsteps = [...currentSubs]; });
   }
 
   function goTo(idx: number) {
     const r = recipe();
     if (r && idx >= 0 && idx < r.content.steps.length) {
-      updateProgress(r.id, { currentCookingStep: idx });
+      updateProgress(r.id, (pp) => { pp.currentCookingStep = idx; });
     }
   }
 
@@ -227,7 +224,7 @@ export default function CookingMode() {
                                     onClick={() => {
                                       if (hasToggle()) {
                                         const modes = { ...p.ingredientUnitModes, [modeKey]: modeIdx() + 1 };
-                                        updateProgress(r.id, { ingredientUnitModes: modes });
+                                        updateProgress(r.id, (pp) => { pp.ingredientUnitModes = modes; });
                                       }
                                     }}
                                     aria-label="Toggle unit"
