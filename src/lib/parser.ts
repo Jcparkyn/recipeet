@@ -47,7 +47,8 @@ Rules:
 13. Identify up to 2 relevant image URLs from the original page content (the markdown may contain ![alt](url) references) that illustrate each step. Include them in an "images" array on each step object. Only include images directly useful for understanding that specific step. Use an empty array if no relevant images exist.
 14. Estimate the time each substep takes. Include "handsOnTime" (active work in minutes, e.g. chopping, stirring) and "waitTime" (passive time in minutes, e.g. baking, simmering, resting). Both are numbers in minutes, omit if zero. Examples: dicing chicken is {"handsOnTime": 3}; frying is {"handsOnTime": 2, "waitTime": 8}.
 15. Split into separate substeps aggressively. A substep may contain multiple ingredient actions (add, stir, mix, measure) but at most ONE timed cooking/waiting section. Whenever the source describes a cooking action (cook, simmer, fry, boil, bake, roast, sauté, rest, etc.) followed by another cooking action with different timing, split them into different substeps. Example: "add [[ing:0]], cook for 2 min, add [[ing:1]], cook for 4 min" must be TWO substeps — the first ending at "2 min", the second starting with "add [[ing:1]]". Conversely, "fry [[ing:0]] for 3 min, then set aside" is a single substep because there is only one cooking section.
-
+16. If an ingredient is used in multiple steps/substeps, make multiple entries for that ingredient with the same name.
+17. If the recipe contains either/or ingredients (e.g. chicken or pork), put them in a separate category heading, e.g. "Protein (choose 1)".
 
 Return only valid JSON, no markdown fences, no extra text.`;
 
