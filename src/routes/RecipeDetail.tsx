@@ -2,8 +2,7 @@ import { createMemo, createSignal, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, removeRecipe, updateRecipe, updateProgress } from '@/lib/storage';
-import { CATEGORY_LABELS, CATEGORY_ORDER } from '@/lib/types';
-import type { Ingredient, ShoppingCategory } from '@/lib/types';
+import type { Ingredient } from '@/lib/types';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
 import { getToggledDisplay, toQuantity } from '@/lib/conversions';
 import ServingsScaler from '@/components/ServingsScaler';
@@ -16,7 +15,7 @@ interface GroupedIngredient {
   quantity: number;
   ids: string[];
   notes?: string;
-  category?: ShoppingCategory;
+  category?: string;
 }
 
 export default function RecipeDetail() {
@@ -113,13 +112,26 @@ export default function RecipeDetail() {
 
   const cats = createMemo(() => {
     const g = grouped();
-    const result: { category: ShoppingCategory; items: GroupedIngredient[] }[] = [];
-    for (const cat of CATEGORY_ORDER) {
-      const items = g.filter((i) => i.category === cat);
-      if (items.length > 0) result.push({ category: cat, items });
+    const map = new Map<string, GroupedIngredient[]>();
+    const other: GroupedIngredient[] = [];
+    for (const item of g) {
+      if (item.category) {
+        const existing = map.get(item.category);
+        if (existing) {
+          existing.push(item);
+        } else {
+          map.set(item.category, [item]);
+        }
+      } else {
+        other.push(item);
+      }
     }
-    const other = g.filter((i) => !i.category || !CATEGORY_ORDER.includes(i.category));
-    if (other.length > 0) result.push({ category: 'other', items: other });
+    const sorted = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const result: { category: string; items: GroupedIngredient[] }[] = [];
+    for (const [cat, items] of sorted) {
+      result.push({ category: cat, items });
+    }
+    if (other.length > 0) result.push({ category: 'Other', items: other });
     return result;
   });
 
@@ -195,7 +207,7 @@ export default function RecipeDetail() {
                   >
                     {allChecked ? '✓' : '○'}
                   </span>
-                  <h3 class={styles.catTitle}>{CATEGORY_LABELS[cat.category]}</h3>
+                  <h3 class={styles.catTitle}>{cat.category}</h3>
                 </div>
                 <ul class={styles.ingredientList}>
                   {cat.items.map((item) => {

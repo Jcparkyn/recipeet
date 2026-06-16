@@ -30,7 +30,7 @@ export interface Ingredient {
   quantity: number;
   unit: string;
   notes?: string;
-  category?: ShoppingCategory;
+  category?: string;
 }
 
 export interface Step {
@@ -77,38 +77,6 @@ export interface Quantity {
   value: number;
   kind: QuantityKind;
 }
-
-export type ShoppingCategory =
-  | 'produce'
-  | 'dairy'
-  | 'meat'
-  | 'pantry'
-  | 'spices'
-  | 'bakery'
-  | 'frozen'
-  | 'other';
-
-export const CATEGORY_LABELS: Record<ShoppingCategory, string> = {
-  produce: 'Produce',
-  dairy: 'Dairy',
-  meat: 'Meat',
-  pantry: 'Pantry',
-  spices: 'Spices',
-  bakery: 'Bakery',
-  frozen: 'Frozen',
-  other: 'Other',
-};
-
-export const CATEGORY_ORDER: ShoppingCategory[] = [
-  'produce',
-  'meat',
-  'dairy',
-  'bakery',
-  'pantry',
-  'spices',
-  'frozen',
-  'other',
-];
 
 export interface LLMSettings {
   apiKey: string;

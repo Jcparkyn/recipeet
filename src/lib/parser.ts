@@ -1,4 +1,4 @@
-import type { RecipeContent, LLMSettings, ShoppingCategory, LinkedIngredient, InstructionSegment } from './types';
+import type { RecipeContent, LLMSettings, LinkedIngredient, InstructionSegment } from './types';
 
 export interface ParseResult {
   content: RecipeContent;
@@ -16,7 +16,7 @@ const SYSTEM_PROMPT = `You are a recipe parser. Given unstructured recipe text, 
   "title": string,
   "originalServings": number,
   "ingredients": [
-    { "name": string, "quantity": number, "unit": string, "notes"?: string, "category": "produce"|"dairy"|"meat"|"pantry"|"spices"|"bakery"|"frozen"|"other" }
+    { "name": string, "quantity": number, "unit": string, "notes"?: string, "category": string }
   ],
   "steps": [
     {
@@ -38,7 +38,7 @@ Rules:
 4. Time-sensitive prep (e.g. "cut meat before it goes in a hot pan") gets its own step BEFORE the cooking step that needs it.
 5. Non-urgent measuring (e.g. "add 1 tsp paprika to sauce") stays inline in the cooking substep.
 6. Every substep instruction must use [[ing:N]] markers where an ingredient is used (N = zero-based index in ingredients[]). Do NOT write the ingredient name or quantity in the instruction text — the [[ing:N]] marker replaces it entirely. Example: "Dice [[ing:0]] into small cubes" not "Dice 2 onions into small cubes".
-7. Categorize each ingredient.
+7. Categorize each ingredient using standard AU grocery store aisle names, title-cased. Examples (not exhaustive): Produce, Dairy, Meat, Pantry, Spices, Bakery, Frozen. You don't have to follow the categories used in the original recipe, which might be a different system.
 8. Default to 4 servings if not specified.
 9. Convert fractions to decimals (0.5 not 1/2).
 10. linkedIngredients[].ingredientIndex refers to zero-based index in ingredients[].
@@ -48,7 +48,7 @@ Rules:
 14. Estimate the time each substep takes. Include "handsOnTime" (active work in minutes, e.g. chopping, stirring) and "waitTime" (passive time in minutes, e.g. baking, simmering, resting). Both are numbers in minutes, omit if zero. Examples: dicing chicken is {"handsOnTime": 3}; frying is {"handsOnTime": 2, "waitTime": 8}.
 15. Split into separate substeps aggressively. A substep may contain multiple ingredient actions (add, stir, mix, measure) but at most ONE timed cooking/waiting section. Whenever the source describes a cooking action (cook, simmer, fry, boil, bake, roast, sauté, rest, etc.) followed by another cooking action with different timing, split them into different substeps. Example: "add [[ing:0]], cook for 2 min, add [[ing:1]], cook for 4 min" must be TWO substeps — the first ending at "2 min", the second starting with "add [[ing:1]]". Conversely, "fry [[ing:0]] for 3 min, then set aside" is a single substep because there is only one cooking section.
 16. If an ingredient is used in multiple steps/substeps, make multiple entries for that ingredient with the same name.
-17. If the recipe contains either/or ingredients (e.g. chicken or pork), put them in a separate category heading, e.g. "Protein (choose 1)".
+17. If the recipe contains "either/or" ingredients (e.g. chicken OR pork, parsley OR coriander), they must be put in a separate category heading, e.g. "Protein (choose 1)".
 
 Return only valid JSON, no markdown fences, no extra text.`;
 
@@ -112,7 +112,7 @@ function validateAndTransform(raw: Record<string, unknown>): ParseResult {
     quantity: Number(ing.quantity) || 0,
     unit: String(ing.unit || ''),
     notes: ing.notes ? String(ing.notes) : undefined,
-    category: isValidCategory(ing.category) ? ing.category : undefined,
+    category: typeof ing.category === 'string' && ing.category ? ing.category : undefined,
   }));
 
   const steps = raw.steps.map((step: Record<string, unknown>, si: number) => ({
@@ -210,11 +210,6 @@ function parseSegments(
   }
 
   return segments;
-}
-
-function isValidCategory(c: unknown): c is ShoppingCategory {
-  const valid: ShoppingCategory[] = ['produce', 'dairy', 'meat', 'pantry', 'spices', 'bakery', 'frozen', 'other'];
-  return typeof c === 'string' && valid.includes(c as ShoppingCategory);
 }
 
 export function getParser(): RecipeParser {
