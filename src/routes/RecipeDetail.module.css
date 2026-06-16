@@ -129,7 +129,7 @@
 }
 
 .category {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .catHeader {
@@ -140,20 +140,8 @@
   cursor: pointer;
 }
 
-.catCheck {
-  font-size: 1rem;
-  color: #ccc;
-  width: 20px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.catCheck.checked {
-  color: #2d6a4f;
-}
-
 .catTitle {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #666;
   margin: 0;
@@ -167,36 +155,40 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 
 .ingredient {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #eee;
+  gap: 6px;
+  padding: 4px 8px;
   font-size: 0.9rem;
   position: relative;
 }
 
 .checkBtn {
-  background: none;
-  border: none;
-  font-size: 1.1rem;
+  box-sizing: border-box;
+  background: transparent;
+  border: 2px solid #ccc;
+  border-radius: 3px;
+  font-size: 0.7rem;
   color: #ccc;
   cursor: pointer;
   padding: 0;
-  width: 22px;
-  text-align: center;
+  width: 19px;
+  height: 19px;
   flex-shrink: 0;
-  line-height: 1;
+  margin-top: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 
 .checkBtn.checked {
+  border-color: #2d6a4f;
   color: #2d6a4f;
 }
 

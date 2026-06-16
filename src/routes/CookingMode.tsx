@@ -180,7 +180,7 @@ export default function CookingMode() {
                 classList={{ [styles.checked]: stepChecked() }}
                 aria-label={stepChecked() ? 'Uncheck step' : 'Check step'}
               >
-                {stepChecked() ? '✓' : '○'}
+                {stepChecked() ? '✓' : ''}
               </button>
               <h2 class={styles.stepTitle}>{currentStep()?.title ?? ''}</h2>
             </div>
@@ -193,12 +193,12 @@ export default function CookingMode() {
                   return (
                     <li class={styles.substep}>
                       <button
-                        class={styles.subCheck}
+                        class={styles.stepCheck}
                         classList={{ [styles.checked]: checked() }}
                         onClick={() => toggleSubstep(sub.id)}
                         aria-label={checked() ? 'Uncheck' : 'Check'}
                       >
-                        {checked() ? '✓' : '○'}
+                        {checked() ? '✓' : ''}
                       </button>
                       <span
                         class={styles.subInstruction}

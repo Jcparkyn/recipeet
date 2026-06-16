@@ -81,18 +81,26 @@
 }
 
 .stepCheck {
-  background: none;
-  border: none;
-  font-size: 1.4rem;
+  box-sizing: border-box;
+  background: transparent;
+  border: 2px solid #ccc;
+  border-radius: 3px;
+  font-size: 0.8rem;
   color: #ccc;
   cursor: pointer;
   padding: 0;
-  width: 28px;
+  width: 19px;
+  height: 19px;
   flex-shrink: 0;
-  line-height: 1.2;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 
 .stepCheck.checked {
+  border-color: #2d6a4f;
   color: #2d6a4f;
 }
 
@@ -116,22 +124,6 @@
 .substep {
   display: flex;
   gap: 12px;
-}
-
-.subCheck {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  color: #ccc;
-  cursor: pointer;
-  padding: 0;
-  width: 28px;
-  flex-shrink: 0;
-  line-height: 1.4;
-}
-
-.subCheck.checked {
-  color: #2d6a4f;
 }
 
 .subInstruction {

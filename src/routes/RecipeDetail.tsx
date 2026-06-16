@@ -202,10 +202,10 @@ export default function RecipeDetail() {
                   onClick={() => toggleCategory(cat.items)}
                 >
                   <span
-                    class={styles.catCheck}
+                    class={styles.checkBtn}
                     classList={{ [styles.checked]: allChecked }}
                   >
-                    {allChecked ? '✓' : '○'}
+                    {allChecked ? '✓' : ''}
                   </span>
                   <h3 class={styles.catTitle}>{cat.category}</h3>
                 </div>
@@ -228,7 +228,7 @@ export default function RecipeDetail() {
                           }}
                           aria-label={item.name}
                         >
-                          {itemChecked ? '✓' : '○'}
+                          {itemChecked ? '✓' : ''}
                         </button>
                         <button
                           class={styles.ingName}
