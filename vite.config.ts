@@ -14,7 +14,7 @@ export default defineConfig({
         short_name: 'Recipeet',
         description: 'Interactive step-by-step recipe cookbook',
         theme_color: '#2d6a4f',
-        background_color: '#f8faf8',
+        background_color: '#fdfaf3',
         display: 'standalone',
         start_url: '/',
         icons: [

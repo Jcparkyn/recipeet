@@ -97,6 +97,7 @@
 }
 
 .stepTitle {
+  font-family: var(--font-heading);
   font-size: 1.15rem;
   font-weight: 700;
   margin: 0;
@@ -268,6 +269,7 @@
 }
 
 .doneContent h1 {
+  font-family: var(--font-heading);
   font-size: 2rem;
   margin: 0 0 8px;
   color: #2d6a4f;

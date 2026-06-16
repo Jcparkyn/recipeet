@@ -2,7 +2,8 @@
   min-height: 100dvh;
   max-width: 430px;
   margin: 0 auto;
-  background: var(--bg, #f8faf8);
+  --font-heading: 'Lora', Georgia, 'Times New Roman', serif;
+  background: var(--bg, #fdfaf3);
   color: var(--fg, #1a1a1a);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   position: relative;
