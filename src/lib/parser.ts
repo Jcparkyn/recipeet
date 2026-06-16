@@ -32,7 +32,7 @@ const SYSTEM_PROMPT = `You are a recipe parser. Given unstructured recipe text, 
 }
 
 Rules:
-1. Include any general notes about a step (tips, warnings, explanations) in the "notes" field. Omit or leave empty if there are no notable notes. Do NOT put duration/timing info in notes.
+1. Include any general notes about a step (tips, warnings, explanations) in the "notes" field. Omit or leave empty if there are no notable notes. This should NOT include a summary or duration/timing info, just extra useful details from the recipe.
 2. Reorder steps so that long-running background tasks (e.g. preheating oven, bringing water to a boil, marinating) start BEFORE shorter prep steps like chopping and measuring. The goal is that by the time the food is ready to go in, the oven is already hot or the water is already boiling.
 3. Prep work (chopping, measuring, marinating) should still come before cooking steps that depend on them.
 4. Time-sensitive prep (e.g. "cut meat before it goes in a hot pan") gets its own step BEFORE the cooking step that needs it.
