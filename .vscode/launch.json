@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "msedge",
+      "request": "launch",
+      "name": "Attach Edge (dev already running)",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/src"
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Attach Chrome (dev already running)",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/src"
+    }
+  ]
+}
