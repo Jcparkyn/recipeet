@@ -52,7 +52,7 @@ export default function CookingMode() {
   const [completed, setCompleted] = createSignal(false);
 
   const ingredientLookup = createMemo(() => {
-    const map = new Map<string, { name: string; quantity: number; unit: string }>();
+    const map = new Map<string, { name: string; quantity?: number; unit: string }>();
     for (const ing of recipe()?.content.ingredients ?? []) {
       map.set(ing.id, { name: ing.name, quantity: ing.quantity, unit: ing.unit });
     }
@@ -205,12 +205,14 @@ export default function CookingMode() {
                           when={sub.segments}
                           fallback={sub.instruction}
                         >
-                          <For each={sub.segments}>
+                           <For each={sub.segments}>
                             {(seg) => {
                               if (seg.type === 'text') return seg.text;
                               const ing = ingredientLookup().get(seg.ingredientId);
-                              const scaled = scaleQuantity(ing?.quantity ?? 0, originalServings(), targetServings());
-                              const segQty = () => toQuantity(scaled, ing?.unit ?? '');
+                              const qty = ing?.quantity;
+                              const scaled = scaleQuantity(qty, originalServings(), targetServings());
+                              const hasQty = qty != null && scaled != null;
+                              const segQty = () => hasQty ? toQuantity(qty, ing?.unit ?? '') : undefined;
                               const isChecked = () => checkedIngredients().has(seg.ingredientId);
                               const modeKey = seg.ingredientId;
                               const modeIdx = () => progress()?.ingredientUnitModes[modeKey] ?? 0;
@@ -218,20 +220,22 @@ export default function CookingMode() {
                               const hasToggle = () => toggled().totalModes > 1;
                               return (
                                 <>
-                                  <button
-                                    class={styles.unitToggle}
-                                    classList={{ [styles.hasToggle]: hasToggle() }}
-                                    onClick={() => {
-                                      if (hasToggle()) {
-                                        const modes = { ...p.ingredientUnitModes, [modeKey]: modeIdx() + 1 };
-                                        updateProgress(r.id, (pp) => { pp.ingredientUnitModes = modes; });
-                                      }
-                                    }}
-                                    aria-label="Toggle unit"
-                                    disabled={!hasToggle()}
-                                  >
-                                    {formatQuantity(toggled().display.quantity)} {toggled().display.unit}
-                                  </button>
+                                  <Show when={hasQty}>
+                                    <button
+                                      class={styles.unitToggle}
+                                      classList={{ [styles.hasToggle]: hasToggle() }}
+                                      onClick={() => {
+                                        if (hasToggle()) {
+                                          const modes = { ...p.ingredientUnitModes, [modeKey]: modeIdx() + 1 };
+                                          updateProgress(r.id, (pp) => { pp.ingredientUnitModes = modes; });
+                                        }
+                                      }}
+                                      aria-label="Toggle unit"
+                                      disabled={!hasToggle()}
+                                    >
+                                      {formatQuantity(toggled().display.quantity)} {toggled().display.unit}
+                                    </button>
+                                  </Show>
                                   {' '}
                                   <span
                                     class={styles.ingredientLink}

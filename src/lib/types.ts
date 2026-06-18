@@ -26,7 +26,7 @@ export interface RecipeProgress {
 export interface Ingredient {
   id: string;
   name: string;
-  quantity: number;
+  quantity?: number;
   unit: string;
   notes?: string;
   category?: string;

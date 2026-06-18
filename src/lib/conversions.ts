@@ -130,7 +130,8 @@ function lookupDensity(name: string): number | undefined {
   return undefined;
 }
 
-export function toQuantity(quantity: number, unit: string): Quantity {
+export function toQuantity(quantity: number | undefined, unit: string): Quantity | undefined {
+  if (quantity == null) return undefined;
   const u = unit.toLowerCase().trim();
   if (u in VOLUME_TO_ML) {
     return { value: quantity * VOLUME_TO_ML[u], kind: 'ml' };
@@ -209,11 +210,14 @@ export function getAvailableModes(qty: Quantity, density?: number): UnitDisplay[
  * front of the list so ml/L is the default display.
  */
 export function getToggledDisplay(
-  qty: Quantity,
+  qty: Quantity | undefined,
   displayUnit: string,
   modeIndex: number,
   ingredientName?: string,
 ): { display: UnitDisplay; totalModes: number } {
+  if (!qty) {
+    return { display: { quantity: 0, unit: displayUnit }, totalModes: 0 };
+  }
   const density = ingredientName ? lookupDensity(ingredientName) : undefined;
   const modes = getAvailableModes(qty, density);
 

@@ -1,11 +1,11 @@
 import type { Quantity } from './types';
 
 export function scaleQuantity(
-  quantity: number,
+  quantity: number | undefined,
   originalServings: number,
   targetServings: number,
-): number {
-  if (originalServings <= 0) return quantity;
+): number | undefined {
+  if (quantity == null || originalServings <= 0) return quantity;
   const scaled = quantity * (targetServings / originalServings);
   return Math.round(scaled * 100) / 100;
 }
@@ -17,7 +17,7 @@ export function scaleQuantityValue(
 ): Quantity {
   return {
     ...qty,
-    value: scaleQuantity(qty.value, originalServings, targetServings),
+    value: scaleQuantity(qty.value, originalServings, targetServings) ?? 0,
   };
 }
 

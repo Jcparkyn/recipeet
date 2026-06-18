@@ -1,7 +1,7 @@
 import { generateText, Output } from 'ai';
 import { createDeepSeek, type DeepSeekLanguageModelOptions } from '@ai-sdk/deepseek';
 import { z } from 'zod';
-import type { RecipeContent, LLMSettings, InstructionSegment } from './types';
+import type { RecipeContent, LLMSettings, InstructionSegment, Ingredient } from './types';
 
 export interface ParseResult {
   content: RecipeContent;
@@ -41,13 +41,14 @@ Notes:
 Quantities:
 - Guess the number of servings based on quantities, if not specified explicitly in the recipe.
 - Convert fractions to decimals (0.5 not 1/2).
+- Never use 0 as a quantity. If there's no quantity in the recipe, leave quantity null.
 - Do NOT convert units. Return units exactly as they appear in the source text. Use only these unit strings: ml, l, g, kg, oz, lb, cup, tbsp, tsp, floz, pint, quart, gallon. For items without a unit (e.g. eggs, cloves, pinches of salt), use an empty string "".
 
 Return only valid JSON, no markdown fences, no extra text.`;
 
 const ingredientSchema = z.object({
   name: z.string().min(1),
-  quantity: z.coerce.number(),
+  quantity: z.coerce.number().optional(),
   unit: z.string(),
   notes: z.string().optional(),
   category: z.string().optional(),
@@ -110,10 +111,10 @@ function validateAndTransform(raw: RawRecipe): ParseResult {
   let nextId = 1;
   const warnings: string[] = [];
 
-  const ingredients = raw.ingredients.map((ing) => ({
+  const ingredients: Ingredient[] = raw.ingredients.map((ing) => ({
     id: String(nextId++),
     name: ing.name,
-    quantity: ing.quantity || 0,
+    quantity: (ing.quantity != null && ing.quantity > 0) ? ing.quantity : undefined,
     unit: ing.unit || '',
     notes: ing.notes || undefined,
     category: ing.category || undefined,

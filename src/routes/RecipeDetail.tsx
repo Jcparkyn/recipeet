@@ -12,7 +12,7 @@ import styles from './RecipeDetail.module.css';
 interface GroupedIngredient {
   name: string;
   unit: string;
-  quantity: number;
+  quantity?: number;
   ids: string[];
   notes?: string;
   category?: string;
@@ -226,7 +226,8 @@ export default function RecipeDetail() {
                   {cat.items.map((item) => {
                     const itemChecked = item.ids.every((id) => checked().has(id));
                     const firstId = item.ids[0];
-                    const qty = () => toQuantity(item.quantity, item.unit);
+                    const hasQty = item.quantity != null;
+                    const qty = () => hasQty ? toQuantity(item.quantity, item.unit) : undefined;
                     const modeIdx = () => p?.ingredientUnitModes[firstId] ?? 0;
                     const toggled = () =>
                       getToggledDisplay(qty(), item.unit, modeIdx(), item.name);
@@ -254,24 +255,26 @@ export default function RecipeDetail() {
                             <span class={styles.ingNotes}>{item.notes}</span>
                           )}
                         </button>
-                        <button
-                          class={styles.ingQty}
-                          classList={{ [styles.hasToggle]: hasToggle() }}
-                          onClick={() => {
-                            if (hasToggle()) {
-                              const modes = {
-                                ...(p?.ingredientUnitModes ?? {}),
-                                [firstId]: modeIdx() + 1,
-                              };
-                              updateProgress(recipe.id, (p) => { p.ingredientUnitModes = modes; });
-                            }
-                          }}
-                          aria-label="Toggle unit"
-                          disabled={!hasToggle()}
-                        >
-                          {formatQuantity(toggled().display.quantity)}{' '}
-                          {toggled().display.unit}
-                        </button>
+                        <Show when={hasQty}>
+                          <button
+                            class={styles.ingQty}
+                            classList={{ [styles.hasToggle]: hasToggle() }}
+                            onClick={() => {
+                              if (hasToggle()) {
+                                const modes = {
+                                  ...(p?.ingredientUnitModes ?? {}),
+                                  [firstId]: modeIdx() + 1,
+                                };
+                                updateProgress(recipe.id, (p) => { p.ingredientUnitModes = modes; });
+                              }
+                            }}
+                            aria-label="Toggle unit"
+                            disabled={!hasToggle()}
+                          >
+                            {formatQuantity(toggled().display.quantity)}{' '}
+                            {toggled().display.unit}
+                          </button>
+                        </Show>
                       </li>
                     );
                   })}
@@ -390,7 +393,11 @@ function groupIngredients(
     );
     const existing = map.get(key);
     if (existing) {
-      existing.quantity += scaled;
+      if (existing.quantity != null && scaled != null) {
+        existing.quantity += scaled;
+      } else {
+        existing.quantity = existing.quantity ?? scaled;
+      }
       existing.ids.push(ing.id);
     } else {
       map.set(key, {
