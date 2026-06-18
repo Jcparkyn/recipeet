@@ -187,20 +187,23 @@
 }
 
 .chatBtn {
-  background: none;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 2px solid #ccc;
+  border-radius: 12px;
   cursor: pointer;
-  padding: 8px 12px;
+  padding: 11px 14px;
   line-height: 1;
   flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s;
+  color: #666;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .chatBtn:hover {
-  background: #f0f0f0;
-  border-color: #2d6a4f;
+  border-color: #999;
+  color: #333;
 }
 
 .chatBtn.active {

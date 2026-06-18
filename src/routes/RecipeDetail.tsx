@@ -335,7 +335,7 @@ export default function RecipeDetail() {
             class={styles.btnReset}
             onClick={() => setShowReset(true)}
           >
-            Reset Progress
+            Reset
           </button>
         </Show>
         <button

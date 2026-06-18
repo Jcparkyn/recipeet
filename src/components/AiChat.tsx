@@ -226,7 +226,7 @@ export default function AiChat(props: AiChatProps) {
           onClick={toggle}
           aria-label="AI Chat"
         >
-          💬
+          <img src="/chef-hat.svg" width="24" height="24" alt="" />
         </button>
         {props.children}
       </div>
