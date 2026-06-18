@@ -1,7 +1,7 @@
 import { generateText, Output } from 'ai';
 import { createDeepSeek, type DeepSeekLanguageModelOptions } from '@ai-sdk/deepseek';
 import { z } from 'zod';
-import type { RecipeContent, LLMSettings, LinkedIngredient, InstructionSegment } from './types';
+import type { RecipeContent, LLMSettings, InstructionSegment } from './types';
 
 export interface ParseResult {
   content: RecipeContent;
@@ -26,14 +26,14 @@ Rules:
 7. Categorize each ingredient using standard AU grocery store aisle names, title-cased. Examples (not exhaustive): Produce, Dairy, Meat, Pantry, Spices, Bakery, Frozen. You don't have to follow the categories used in the original recipe, which might be a different system.
 8. Default to 4 servings if not specified.
 9. Convert fractions to decimals (0.5 not 1/2).
-10. linkedIngredients[].ingredientIndex refers to zero-based index in ingredients[].
-11. Do NOT convert units. Return units exactly as they appear in the source text. Use only these unit strings: ml, l, g, kg, oz, lb, cup, tbsp, tsp, floz, pint, quart, gallon. For items without a unit (e.g. eggs, cloves, pinches of salt), use an empty string "".
-12. Extract preparation notes, substitutions, or special qualities from ingredient text (e.g. "cold, cubed", "peeled and diced", "or margarine"). Include in the "notes" field of each ingredient. Leave empty if none.
-13. Identify up to 2 relevant image URLs from the original page content (the markdown may contain ![alt](url) references) that illustrate each step. Include them in an "images" array on each step object. Only include images directly useful for understanding that specific step. Use an empty array if no relevant images exist.
-14. Estimate the time each substep takes. Include "handsOnTime" (active work in minutes, e.g. chopping, stirring) and "waitTime" (passive time in minutes, e.g. baking, simmering, resting). Both are numbers in minutes, omit if zero. Examples: dicing chicken is {"handsOnTime": 3}; frying is {"handsOnTime": 2, "waitTime": 8}.
-15. Split into separate substeps aggressively. A substep may contain multiple ingredient actions (add, stir, mix, measure) but at most ONE timed cooking/waiting section. Whenever the source describes a cooking action (cook, simmer, fry, boil, bake, roast, sauté, rest, etc.) followed by another cooking action with different timing, split them into different substeps. Example: "add [[ing:0]], cook for 2 min, add [[ing:1]], cook for 4 min" must be TWO substeps — the first ending at "2 min", the second starting with "add [[ing:1]]". Conversely, "fry [[ing:0]] for 3 min, then set aside" is a single substep because there is only one cooking section.
-16. If an ingredient is used in multiple steps/substeps, make multiple entries for that ingredient with the same name.
-17. If the recipe contains "either/or" ingredients (e.g. chicken OR pork, parsley OR coriander), they must be put in a separate category heading, e.g. "Protein (choose 1)".
+10. Do NOT convert units. Return units exactly as they appear in the source text. Use only these unit strings: ml, l, g, kg, oz, lb, cup, tbsp, tsp, floz, pint, quart, gallon. For items without a unit (e.g. eggs, cloves, pinches of salt), use an empty string "".
+11. Extract preparation notes, substitutions, or special qualities from ingredient text (e.g. "cold, cubed", "peeled and diced", "or margarine"). Include in the "notes" field of each ingredient. Leave empty if none.
+12. Identify up to 2 relevant image URLs from the original page content (the markdown may contain ![alt](url) references) that illustrate each step. Include them in an "images" array on each step object. Only include images directly useful for understanding that specific step. Use an empty array if no relevant images exist.
+13. Estimate the time each substep takes. Include "handsOnTime" (active work in minutes, e.g. chopping, stirring) and "waitTime" (passive time in minutes, e.g. baking, simmering, resting). Both are numbers in minutes, omit if zero. Examples: dicing chicken is {"handsOnTime": 3}; frying is {"handsOnTime": 2, "waitTime": 8}.
+14. Split into separate substeps aggressively. A substep may contain multiple ingredient actions (add, stir, mix, measure) but at most ONE timed cooking/waiting section. Whenever the source describes a cooking action (cook, simmer, fry, boil, bake, roast, sauté, rest, etc.) followed by another cooking action with different timing, split them into different substeps. Example: "add [[ing:0]], cook for 2 min, add [[ing:1]], cook for 4 min" must be TWO substeps — the first ending at "2 min", the second starting with "add [[ing:1]]". Conversely, "fry [[ing:0]] for 3 min, then set aside" is a single substep because there is only one cooking section.
+15. If an ingredient is used in multiple steps/substeps, make multiple entries for that ingredient with the same name.
+16. If the recipe contains "either/or" ingredients (e.g. chicken OR pork, parsley OR coriander), they must be put in a separate category heading, e.g. "Protein (choose 1)".
+17. As a rough guideline, steps should each have around 2-4 substeps. More substeps is okay is they're very short, and one substep is okay if it's unrelated to nearby steps.
 
 Return only valid JSON, no markdown fences, no extra text.`;
 
@@ -45,17 +45,10 @@ const ingredientSchema = z.object({
   category: z.string().optional(),
 });
 
-const linkedIngredientSchema = z.object({
-  ingredientIndex: z.number().int().min(0),
-  quantity: z.coerce.number(),
-  unit: z.string(),
-});
-
 const substepSchema = z.object({
   instruction: z.string().min(1),
   handsOnTime: z.number().nonnegative().optional(),
   waitTime: z.number().nonnegative().optional(),
-  linkedIngredients: z.array(linkedIngredientSchema).optional(),
 });
 
 const stepSchema = z.object({
@@ -125,25 +118,13 @@ function validateAndTransform(raw: RawRecipe): ParseResult {
     notes: step.notes || undefined,
     images: (step.images || []).filter((u) => u.length > 0).slice(0, 2),
     substeps: (step.substeps || []).map((sub) => {
-      const linkedIngredients: LinkedIngredient[] | undefined = sub.linkedIngredients
-        ? sub.linkedIngredients.map((li) => ({
-            ingredientId:
-              li.ingredientIndex >= 0 && li.ingredientIndex < ingredients.length
-                ? ingredients[li.ingredientIndex].id
-                : '',
-            quantity: li.quantity || 0,
-            unit: li.unit || '',
-          }))
-        : undefined;
-
       const instruction = sub.instruction || '';
-      const segments = parseSegments(instruction, ingredients, linkedIngredients);
+      const segments = parseSegments(instruction, ingredients);
 
       return {
         id: String(nextId++),
         instruction,
         segments,
-        linkedIngredients,
         handsOnTime: sub.handsOnTime && sub.handsOnTime > 0 ? sub.handsOnTime : undefined,
         waitTime: sub.waitTime && sub.waitTime > 0 ? sub.waitTime : undefined,
       };
@@ -161,18 +142,7 @@ function validateAndTransform(raw: RawRecipe): ParseResult {
 function parseSegments(
   instruction: string,
   ingredients: { id: string; name: string }[],
-  linkedIngredients?: LinkedIngredient[],
 ): InstructionSegment[] {
-  if (!linkedIngredients || linkedIngredients.length === 0) {
-    return [{ type: 'text', text: instruction }];
-  }
-
-  const byIndex = new Map<number, LinkedIngredient>();
-  for (const li of linkedIngredients) {
-    const idx = ingredients.findIndex((ing) => ing.id === li.ingredientId);
-    if (idx >= 0) byIndex.set(idx, li);
-  }
-
   const segments: InstructionSegment[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -184,19 +154,12 @@ function parseSegments(
     }
 
     const idx = Number(match[1]);
-    const li = byIndex.get(idx);
+    const ing = ingredients[idx];
 
-    if (li && li.ingredientId) {
-      segments.push({
-        type: 'ingredient',
-        ingredientId: li.ingredientId,
-        quantity: li.quantity,
-        unit: li.unit,
-      });
+    if (ing) {
+      segments.push({ type: 'ingredient', ingredientId: ing.id });
     } else {
-      const ing = ingredients[idx];
-      const name = ing ? ing.name : `ingredient ${idx}`;
-      segments.push({ type: 'text', text: `${li?.quantity ?? ''} ${li?.unit ?? ''} ${name}`.trim() });
+      segments.push({ type: 'text', text: `ingredient ${idx}` });
     }
 
     lastIndex = match.index + match[0].length;
@@ -204,6 +167,10 @@ function parseSegments(
 
   if (lastIndex < instruction.length) {
     segments.push({ type: 'text', text: instruction.slice(lastIndex) });
+  }
+
+  if (segments.length === 0) {
+    return [{ type: 'text', text: instruction }];
   }
 
   return segments;

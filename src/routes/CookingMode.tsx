@@ -52,9 +52,9 @@ export default function CookingMode() {
   const [completed, setCompleted] = createSignal(false);
 
   const ingredientLookup = createMemo(() => {
-    const map = new Map<string, { name: string }>();
+    const map = new Map<string, { name: string; quantity: number; unit: string }>();
     for (const ing of recipe()?.content.ingredients ?? []) {
-      map.set(ing.id, { name: ing.name });
+      map.set(ing.id, { name: ing.name, quantity: ing.quantity, unit: ing.unit });
     }
     return map;
   });
@@ -209,12 +209,12 @@ export default function CookingMode() {
                             {(seg) => {
                               if (seg.type === 'text') return seg.text;
                               const ing = ingredientLookup().get(seg.ingredientId);
-                              const scaled = scaleQuantity(seg.quantity, originalServings(), targetServings());
-                              const segQty = () => toQuantity(scaled, seg.unit);
+                              const scaled = scaleQuantity(ing?.quantity ?? 0, originalServings(), targetServings());
+                              const segQty = () => toQuantity(scaled, ing?.unit ?? '');
                               const isChecked = () => checkedIngredients().has(seg.ingredientId);
                               const modeKey = seg.ingredientId;
                               const modeIdx = () => progress()?.ingredientUnitModes[modeKey] ?? 0;
-                              const toggled = () => getToggledDisplay(segQty(), seg.unit, modeIdx(), ing?.name);
+                              const toggled = () => getToggledDisplay(segQty(), ing?.unit ?? '', modeIdx(), ing?.name);
                               const hasToggle = () => toggled().totalModes > 1;
                               return (
                                 <>

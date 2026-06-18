@@ -45,15 +45,8 @@ export interface SubStep {
   id: string;
   instruction: string;
   segments?: InstructionSegment[];
-  linkedIngredients?: LinkedIngredient[];
   handsOnTime?: number;
   waitTime?: number;
-}
-
-export interface LinkedIngredient {
-  ingredientId: string;
-  quantity: number;
-  unit: string;
 }
 
 export type InstructionSegment = TextSegment | IngredientSegment;
@@ -66,8 +59,6 @@ export interface TextSegment {
 export interface IngredientSegment {
   type: 'ingredient';
   ingredientId: string;
-  quantity: number;
-  unit: string;
 }
 
 export type QuantityKind = 'gram' | 'ml' | 'count';
