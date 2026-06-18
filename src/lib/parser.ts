@@ -1,3 +1,6 @@
+import { generateText, Output } from 'ai';
+import { createDeepSeek, type DeepSeekLanguageModelOptions } from '@ai-sdk/deepseek';
+import { z } from 'zod';
 import type { RecipeContent, LLMSettings, LinkedIngredient, InstructionSegment } from './types';
 
 export interface ParseResult {
@@ -11,25 +14,7 @@ export interface RecipeParser {
 
 const ING_MARKER = /\[\[ing:(\d+)\]\]/g;
 
-const SYSTEM_PROMPT = `You are a recipe parser. Given unstructured recipe text, return a JSON object with this schema:
-{
-  "title": string,
-  "originalServings": number,
-  "ingredients": [
-    { "name": string, "quantity": number, "unit": string, "notes"?: string, "category": string }
-  ],
-  "steps": [
-    {
-      "title": string,
-      "order": number,
-      "notes"?: string,
-      "images"?: string[],
-      "substeps": [
-        { "instruction": string, "handsOnTime"?: number, "waitTime"?: number, "linkedIngredients"?: [{ "ingredientIndex": number, "quantity": number, "unit": string }] }
-      ]
-    }
-  ]
-}
+const SYSTEM_PROMPT = `You are a recipe parser. Given unstructured recipe text, extract structured recipe data.
 
 Rules:
 1. Include any general notes about a step (tips, warnings, explanations) in the "notes" field. Omit or leave empty if there are no notable notes. This should NOT include a summary or duration/timing info, just extra useful details from the recipe.
@@ -52,111 +37,123 @@ Rules:
 
 Return only valid JSON, no markdown fences, no extra text.`;
 
+const ingredientSchema = z.object({
+  name: z.string().min(1),
+  quantity: z.coerce.number(),
+  unit: z.string(),
+  notes: z.string().optional(),
+  category: z.string().optional(),
+});
+
+const linkedIngredientSchema = z.object({
+  ingredientIndex: z.number().int().min(0),
+  quantity: z.coerce.number(),
+  unit: z.string(),
+});
+
+const substepSchema = z.object({
+  instruction: z.string().min(1),
+  handsOnTime: z.number().nonnegative().optional(),
+  waitTime: z.number().nonnegative().optional(),
+  linkedIngredients: z.array(linkedIngredientSchema).optional(),
+});
+
+const stepSchema = z.object({
+  title: z.string().min(1),
+  order: z.number(),
+  notes: z.string().optional(),
+  images: z.array(z.string()).optional(),
+  substeps: z.array(substepSchema).min(1),
+});
+
+const recipeOutputSchema = z.object({
+  title: z.string().min(1),
+  originalServings: z.coerce.number().positive().optional(),
+  ingredients: z.array(ingredientSchema).min(1),
+  steps: z.array(stepSchema).min(1),
+});
+
+type RawRecipe = z.infer<typeof recipeOutputSchema>;
+
 export class DeepSeekParser implements RecipeParser {
   async parse(text: string, settings: LLMSettings): Promise<ParseResult> {
-    const response = await fetch(`${settings.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: settings.model,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: text },
-        ],
-        temperature: 0.1,
-        thinking: { type: 'enabled' },
-        reasoning_effort: 'high',
-        response_format: { type: 'json_object' },
-      }),
+    const provider = createDeepSeek({
+      apiKey: settings.apiKey,
+      baseURL: settings.baseUrl,
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`LLM API error (${response.status}): ${err}`);
+    const result = await generateText({
+      model: provider(settings.model),
+      system: SYSTEM_PROMPT,
+      prompt: text,
+      temperature: 0.1,
+      output: Output.object({ schema: recipeOutputSchema }),
+      providerOptions: {
+        deepseek: {
+          thinking: { type: 'disabled' },
+          reasoningEffort: 'high',
+        } satisfies DeepSeekLanguageModelOptions,
+      },
+    });
+    console.log(result);
+
+    if (!result.output) {
+      throw new Error('Empty response from LLM');
     }
 
-    const data = await response.json();
-    const raw = data.choices?.[0]?.message?.content;
-    if (!raw) throw new Error('Empty response from LLM');
-
-    const parsed = JSON.parse(raw);
-    return validateAndTransform(parsed);
+    return validateAndTransform(result.output);
   }
 }
 
-function validateAndTransform(raw: Record<string, unknown>): ParseResult {
+function validateAndTransform(raw: RawRecipe): ParseResult {
   let nextId = 1;
   const warnings: string[] = [];
 
-  if (!raw.title || typeof raw.title !== 'string') {
-    throw new Error('Recipe is missing a title');
-  }
-
-  const title = raw.title;
-  const originalServings = typeof raw.originalServings === 'number' ? raw.originalServings : 4;
-
-  if (!Array.isArray(raw.ingredients)) {
-    throw new Error('Recipe is missing ingredients');
-  }
-
-  if (!Array.isArray(raw.steps)) {
-    throw new Error('Recipe is missing steps');
-  }
-
-  const ingredients = raw.ingredients.map((ing: Record<string, unknown>) => ({
+  const ingredients = raw.ingredients.map((ing) => ({
     id: String(nextId++),
-    name: String(ing.name || ''),
-    quantity: Number(ing.quantity) || 0,
-    unit: String(ing.unit || ''),
-    notes: ing.notes ? String(ing.notes) : undefined,
-    category: typeof ing.category === 'string' && ing.category ? ing.category : undefined,
+    name: ing.name,
+    quantity: ing.quantity || 0,
+    unit: ing.unit || '',
+    notes: ing.notes || undefined,
+    category: ing.category || undefined,
   }));
 
-  const steps = raw.steps.map((step: Record<string, unknown>, si: number) => ({
+  const steps = raw.steps.map((step, si) => ({
     id: String(nextId++),
-    title: String(step.title || `Step ${si + 1}`),
-    order: typeof step.order === 'number' ? step.order : si,
-    notes: step.notes ? String(step.notes) : undefined,
-    images: Array.isArray(step.images)
-      ? (step.images as string[]).filter((u): u is string => typeof u === 'string' && u.length > 0).slice(0, 2)
-      : undefined,
-    substeps: Array.isArray(step.substeps)
-      ? step.substeps.map((sub: Record<string, unknown>) => {
-          const linkedIngredients: LinkedIngredient[] | undefined = Array.isArray(sub.linkedIngredients)
-            ? sub.linkedIngredients.map((li: Record<string, unknown>) => ({
-                ingredientId:
-                  typeof li.ingredientIndex === 'number' &&
-                  li.ingredientIndex >= 0 &&
-                  li.ingredientIndex < ingredients.length
-                    ? ingredients[li.ingredientIndex].id
-                    : '',
-                quantity: Number(li.quantity) || 0,
-                unit: String(li.unit || ''),
-              }))
-            : undefined;
+    title: step.title || `Step ${si + 1}`,
+    order: step.order ?? si,
+    notes: step.notes || undefined,
+    images: (step.images || []).filter((u) => u.length > 0).slice(0, 2),
+    substeps: (step.substeps || []).map((sub) => {
+      const linkedIngredients: LinkedIngredient[] | undefined = sub.linkedIngredients
+        ? sub.linkedIngredients.map((li) => ({
+            ingredientId:
+              li.ingredientIndex >= 0 && li.ingredientIndex < ingredients.length
+                ? ingredients[li.ingredientIndex].id
+                : '',
+            quantity: li.quantity || 0,
+            unit: li.unit || '',
+          }))
+        : undefined;
 
-          const instruction = String(sub.instruction || '');
-          const segments = parseSegments(instruction, ingredients, linkedIngredients);
+      const instruction = sub.instruction || '';
+      const segments = parseSegments(instruction, ingredients, linkedIngredients);
 
-          return {
-            id: String(nextId++),
-            instruction,
-            segments,
-            linkedIngredients,
-            handsOnTime: typeof sub.handsOnTime === 'number' && sub.handsOnTime > 0 ? sub.handsOnTime : undefined,
-            waitTime: typeof sub.waitTime === 'number' && sub.waitTime > 0 ? sub.waitTime : undefined,
-          };
-        })
-      : [],
+      return {
+        id: String(nextId++),
+        instruction,
+        segments,
+        linkedIngredients,
+        handsOnTime: sub.handsOnTime && sub.handsOnTime > 0 ? sub.handsOnTime : undefined,
+        waitTime: sub.waitTime && sub.waitTime > 0 ? sub.waitTime : undefined,
+      };
+    }),
   }));
 
   steps.sort((a, b) => a.order - b.order);
 
   return {
-    content: { title, originalServings, ingredients, steps },
+    content: { title: raw.title, originalServings: raw.originalServings ?? 1, ingredients, steps },
     warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
