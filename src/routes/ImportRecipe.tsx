@@ -20,7 +20,7 @@ interface ImportState {
 export default function ImportRecipe() {
   const navigate = useNavigate();
 
-  const [tab, setTab] = createSignal<'paste' | 'url'>('paste');
+  const [tab, setTab] = createSignal<'paste' | 'url'>('url');
   const [text, setText] = createSignal('');
   const [url, setUrl] = createSignal('');
 
@@ -97,35 +97,22 @@ export default function ImportRecipe() {
       <div class={styles.tabs}>
         <button
           class={styles.tab}
-          classList={{ [styles.active]: tab() === 'paste' }}
-          onClick={() => setTab('paste')}
-        >
-          Paste Text
-        </button>
-        <button
-          class={styles.tab}
           classList={{ [styles.active]: tab() === 'url' }}
           onClick={() => setTab('url')}
         >
           Import URL
         </button>
+        <button
+          class={styles.tab}
+          classList={{ [styles.active]: tab() === 'paste' }}
+          onClick={() => setTab('paste')}
+        >
+          Paste Text
+        </button>
       </div>
 
       <main class={styles.main}>
-        {tab() === 'paste' ? (
-          <div class={styles.pasteTab}>
-            <textarea
-              class={styles.textarea}
-              placeholder="Paste your recipe here..."
-              value={text()}
-              onInput={(e) => setText(e.currentTarget.value)}
-              rows={16}
-            />
-            <button class={styles.parseBtn} onClick={handlePaste} disabled={loading()}>
-              {loading() ? 'Parsing...' : 'Parse Recipe'}
-            </button>
-          </div>
-        ) : (
+        {tab() === 'url' ? (
           <div class={styles.urlTab}>
             <input
               class={styles.urlInput}
@@ -136,6 +123,19 @@ export default function ImportRecipe() {
             />
             <button class={styles.parseBtn} onClick={handleUrl} disabled={loading()}>
               {loading() ? (importState.status === 'fetching' ? 'Fetching...' : 'Parsing...') : 'Fetch & Parse'}
+            </button>
+          </div>
+        ) : (
+          <div class={styles.pasteTab}>
+            <textarea
+              class={styles.textarea}
+              placeholder="Paste your recipe here..."
+              value={text()}
+              onInput={(e) => setText(e.currentTarget.value)}
+              rows={16}
+            />
+            <button class={styles.parseBtn} onClick={handlePaste} disabled={loading()}>
+              {loading() ? 'Parsing...' : 'Parse Recipe'}
             </button>
           </div>
         )}
