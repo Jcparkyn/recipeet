@@ -2,6 +2,7 @@ import { streamText, tool, stepCountIs } from 'ai';
 import { createDeepSeek, type DeepSeekLanguageModelOptions } from '@ai-sdk/deepseek';
 import { z } from 'zod';
 import type { Recipe, RecipeProgress, ChatMessage } from './types';
+import { scaleQuantity, formatQuantity } from './scaling';
 
 export interface ChatTools {
   setSubstep: (substepId: string, checked: boolean) => void;
@@ -10,22 +11,11 @@ export interface ChatTools {
   getProgress: () => RecipeProgress;
 }
 
-function buildSystemPrompt(
-  recipe: Recipe,
-  progress: RecipeProgress,
-): string {
+function buildSystemPrompt(recipe: Recipe, currentServings: number): string {
   const ctx = {
-    recipe: {
-      title: recipe.content.title,
-      servings: progress.currentServings,
-      originalServings: recipe.content.originalServings,
-    },
-    progress: {
-      currentStep: progress.currentCookingStep,
-      totalSteps: recipe.content.steps.length,
-      checkedSubsteps: progress.checkedSubsteps,
-      checkedIngredients: progress.checkedIngredients,
-    },
+    title: recipe.content.title,
+    servings: currentServings,
+    originalServings: recipe.content.originalServings,
     steps: recipe.content.steps.map((s, i) => ({
       index: i,
       title: s.title,
@@ -34,22 +24,25 @@ function buildSystemPrompt(
         instruction: sub.instruction,
         handsOnTime: sub.handsOnTime,
         waitTime: sub.waitTime,
-        checked: progress.checkedSubsteps.includes(sub.id),
       })),
     })),
-    ingredients: recipe.content.ingredients.map((i) => ({
-      id: i.id,
-      name: i.name,
-      quantity: i.quantity,
-      unit: i.unit,
-    })),
+    ingredients: recipe.content.ingredients.map((i) => {
+      const scaled = scaleQuantity(i.quantity, recipe.content.originalServings, currentServings);
+      const display = scaled != null && i.unit ? `${formatQuantity(scaled)} ${i.unit}` : undefined;
+      return {
+        id: i.id,
+        name: i.name,
+        display,
+        category: i.category,
+      };
+    }),
   };
 
   const contextJson = JSON.stringify(ctx, null, 2);
 
-  return `You are a helpful cooking assistant embedded in a recipe app. You have access to the full recipe and the user's current progress.
+  return `You are a helpful cooking assistant embedded in a recipe app.
 
-RECIPE CONTEXT:
+RECIPE (all quantities below are already scaled to ${currentServings} servings):
 ${contextJson}
 
 You have tools to update the user's progress. Use them proactively when the user indicates they've completed something.
@@ -57,11 +50,20 @@ You have tools to update the user's progress. Use them proactively when the user
 Guidelines:
 - Be concise. The user is cooking and needs quick, actionable answers.
 - When the user describes completing an action, use the update_substep tool to mark it done.
-- If the user asks "what's next", check their progress and tell them what substep or step comes next.
-- When mentioning ingredients, use the scaled quantities based on current servings shown in the recipe context.
-- Do not repeat the full recipe context unless specifically asked.
+- If the user asks "what's next", check their progress with get_progress and tell them what substep comes next.
+- Ingredient quantities in the recipe are already scaled — use them directly, do not recalculate.
+- Do not repeat the full recipe unless asked.
 - If the user seems confused or stuck, offer helpful guidance based on the recipe steps.
-- In cook mode, you can navigate between steps using go_to_step if needed.`;
+- In cook mode, you can navigate between steps using go_to_step if needed.
+- No formatting (bold, **, etc) - just plain text.
+`;
+}
+
+function buildProgressMessage(progress: RecipeProgress, recipe: Recipe): string {
+  const pct = recipe.content.steps.length > 0
+    ? Math.round((progress.checkedSubsteps.length / recipe.content.steps.reduce((sum, s) => sum + s.substeps.length, 0)) * 100)
+    : 0;
+  return `Current state: Step ${progress.currentCookingStep + 1} of ${recipe.content.steps.length}, ${progress.currentServings} servings, ${pct}% substeps done.`;
 }
 
 export function createChatStream(
@@ -80,14 +82,17 @@ export function createChatStream(
     baseURL: baseUrl,
   });
 
-  const systemPrompt = buildSystemPrompt(recipe, progress);
+  const systemPrompt = buildSystemPrompt(recipe, progress.currentServings);
 
   const messages = [
     ...chatHistory.map((msg) => ({
       role: msg.role as 'user' | 'assistant',
       content: msg.content,
     })),
-    { role: 'user' as const, content: userMessage },
+    {
+      role: 'user' as const,
+      content: `[progress: ${buildProgressMessage(progress, recipe)}]\n\n${userMessage}`,
+    },
   ];
 
   const updateSubstepTool = tool({
