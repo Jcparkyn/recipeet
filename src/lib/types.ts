@@ -21,6 +21,14 @@ export interface RecipeProgress {
   checkedIngredients: string[];
   currentCookingStep: number;
   ingredientUnitModes: Record<string, number>;
+  chatMessages: ChatMessage[];
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
 }
 
 export interface Ingredient {

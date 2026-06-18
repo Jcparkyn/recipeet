@@ -7,6 +7,7 @@ import { scaleQuantity, formatQuantity } from '@/lib/scaling';
 import { getToggledDisplay, toQuantity } from '@/lib/conversions';
 import ServingsScaler from '@/components/ServingsScaler';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import AiChat from '@/components/AiChat';
 import styles from './RecipeDetail.module.css';
 
 interface GroupedIngredient {
@@ -78,7 +79,8 @@ export default function RecipeDetail() {
       p.checkedSubsteps.length > 0 ||
       p.checkedIngredients.length > 0 ||
       p.currentCookingStep !== 0 ||
-      Object.keys(p.ingredientUnitModes).length > 0
+      Object.keys(p.ingredientUnitModes).length > 0 ||
+      p.chatMessages.length > 0
     );
   });
 
@@ -327,7 +329,7 @@ export default function RecipeDetail() {
         </section>
       </main>
 
-      <footer class={styles.footer}>
+      <AiChat recipeId={recipe.id} isCookMode={false}>
         <Show when={hasProgress()}>
           <button
             class={styles.btnReset}
@@ -342,7 +344,7 @@ export default function RecipeDetail() {
         >
           Start Cooking
         </button>
-      </footer>
+      </AiChat>
 
       {showDelete() && (
         <ConfirmDialog
@@ -369,6 +371,7 @@ export default function RecipeDetail() {
               p.checkedIngredients = [];
               p.currentCookingStep = 0;
               p.ingredientUnitModes = {};
+              p.chatMessages = [];
             });
           }}
           onCancel={() => setShowReset(false)}

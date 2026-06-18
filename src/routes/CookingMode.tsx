@@ -3,6 +3,7 @@ import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, updateProgress } from '@/lib/storage';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
 import { getToggledDisplay, toQuantity } from '@/lib/conversions';
+import AiChat from '@/components/AiChat';
 import styles from './CookingMode.module.css';
 
 export default function CookingMode() {
@@ -269,35 +270,37 @@ export default function CookingMode() {
           </div>
         </main>
 
-        <footer class={styles.footer}>
-          <button
-            class={styles.navBtn}
-            classList={{ [styles.disabled]: isFirstStep() }}
-            onClick={prev}
-            disabled={isFirstStep()}
-          >
-            Previous
-          </button>
-          <div class={styles.dots}>
-            <For each={steps()}>
-              {(_, i) => (
-                <button
-                  class={styles.dot}
-                  classList={{ [styles.active]: i() === currentIdx() }}
-                  onClick={() => goTo(i())}
-                  aria-label={`Go to step ${i() + 1}`}
-                />
-              )}
-            </For>
+        <AiChat recipeId={r.id} isCookMode={true}>
+          <div class={styles.navBar}>
+            <button
+              class={styles.navBtn}
+              classList={{ [styles.disabled]: isFirstStep() }}
+              onClick={prev}
+              disabled={isFirstStep()}
+            >
+              Previous
+            </button>
+            <div class={styles.dots}>
+              <For each={steps()}>
+                {(_, i) => (
+                  <button
+                    class={styles.dot}
+                    classList={{ [styles.active]: i() === currentIdx() }}
+                    onClick={() => goTo(i())}
+                    aria-label={`Go to step ${i() + 1}`}
+                  />
+                )}
+              </For>
+            </div>
+            <button
+              class={styles.navBtn}
+              classList={{ [styles.primary]: isLastStep() }}
+              onClick={next}
+            >
+              {isLastStep() ? 'Finish' : 'Next'}
+            </button>
           </div>
-          <button
-            class={styles.navBtn}
-            classList={{ [styles.primary]: isLastStep() }}
-            onClick={next}
-          >
-            {isLastStep() ? 'Finish' : 'Next'}
-          </button>
-        </footer>
+        </AiChat>
       </div>
     </Show>
   );

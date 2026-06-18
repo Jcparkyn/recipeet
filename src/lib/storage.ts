@@ -18,6 +18,7 @@ function loadJson<T>(key: string, fallback: T): T {
 
 function migrateProgress(p: RecipeProgress): RecipeProgress {
   if (!p.ingredientUnitModes) p.ingredientUnitModes = {};
+  if (!p.chatMessages) p.chatMessages = [];
   return p;
 }
 
@@ -61,6 +62,7 @@ export function addRecipe(recipe: Recipe) {
       checkedIngredients: [],
       ingredientUnitModes: {},
       currentCookingStep: 0,
+      chatMessages: [],
     });
   }));
   persistRecipes();
