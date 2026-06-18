@@ -1,4 +1,5 @@
-import { createSignal, createResource, createEffect } from 'solid-js';
+import { createSignal } from 'solid-js';
+import { createStore } from 'solid-js/store';
 import { useNavigate } from '@solidjs/router';
 import { settings, addRecipe } from '@/lib/storage';
 import { getParser } from '@/lib/parser';
@@ -10,63 +11,78 @@ type ImportRequest =
   | { type: 'paste'; content: string }
   | { type: 'url'; url: string };
 
+interface ImportState {
+  status: 'idle' | 'fetching' | 'parsing' | 'error';
+  error: unknown;
+  errorDismissed: boolean;
+}
+
 export default function ImportRecipe() {
   const navigate = useNavigate();
 
   const [tab, setTab] = createSignal<'paste' | 'url'>('paste');
   const [text, setText] = createSignal('');
   const [url, setUrl] = createSignal('');
-  const [importReq, setImportReq] = createSignal<ImportRequest | null>(null);
-  const [errorDismissed, setErrorDismissed] = createSignal(false);
 
-  const [result] = createResource(importReq, async (req): Promise<Recipe> => {
-    let content: string;
-    let sourceUrl: string | undefined;
-
-    if (req.type === 'paste') {
-      content = req.content;
-    } else {
-      content = await fetchUrlContent(req.url);
-      sourceUrl = req.url;
-    }
-
-    const s = settings();
-    if (!s.apiKey) {
-      throw new Error('Please set your API key in Settings first');
-    }
-
-    const parser = getParser();
-    const parsed = await parser.parse(content, s);
-
-    return {
-      id: String(Date.now()),
-      content: parsed.content,
-      sourceUrl,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
+  const [importState, setImportState] = createStore<ImportState>({
+    status: 'idle',
+    error: null,
+    errorDismissed: false,
   });
 
-  createEffect(() => {
-    const recipe = result();
-    if (!recipe) return;
-    addRecipe(recipe);
-    navigate(`/recipe/${recipe.id}`);
-  });
+  async function runImport(req: ImportRequest) {
+    setImportState({ status: 'parsing', error: null, errorDismissed: false });
+
+    try {
+      let content: string;
+      let sourceUrl: string | undefined;
+
+      if (req.type === 'paste') {
+        content = req.content;
+      } else {
+        setImportState('status', 'fetching');
+        content = await fetchUrlContent(req.url);
+        sourceUrl = req.url;
+        setImportState('status', 'parsing');
+      }
+
+      const s = settings();
+      if (!s.apiKey) {
+        throw new Error('Please set your API key in Settings first');
+      }
+
+      const parser = getParser();
+      const parsed = await parser.parse(content, s);
+
+      const recipe: Recipe = {
+        id: String(Date.now()),
+        content: parsed.content,
+        sourceUrl,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      addRecipe(recipe);
+      navigate(`/recipe/${recipe.id}`);
+    } catch (err) {
+      console.error('Recipe import failed:', err);
+      setImportState({ status: 'error', error: err });
+    }
+  }
 
   function handlePaste() {
     const content = text().trim();
     if (!content) return;
-    setErrorDismissed(false);
-    setImportReq({ type: 'paste', content });
+    runImport({ type: 'paste', content });
   }
 
   function handleUrl() {
     const u = url().trim();
     if (!u) return;
-    setErrorDismissed(false);
-    setImportReq({ type: 'url', url: u });
+    runImport({ type: 'url', url: u });
   }
+
+  const loading = () => importState.status === 'fetching' || importState.status === 'parsing';
 
   return (
     <div class={styles.page}>
@@ -105,8 +121,8 @@ export default function ImportRecipe() {
               onInput={(e) => setText(e.currentTarget.value)}
               rows={16}
             />
-            <button class={styles.parseBtn} onClick={handlePaste} disabled={result.loading}>
-              {result.loading ? 'Processing...' : 'Parse Recipe'}
+            <button class={styles.parseBtn} onClick={handlePaste} disabled={loading()}>
+              {loading() ? 'Parsing...' : 'Parse Recipe'}
             </button>
           </div>
         ) : (
@@ -118,16 +134,16 @@ export default function ImportRecipe() {
               value={url()}
               onInput={(e) => setUrl(e.currentTarget.value)}
             />
-            <button class={styles.parseBtn} onClick={handleUrl} disabled={result.loading}>
-              {result.loading ? 'Processing...' : 'Fetch & Parse'}
+            <button class={styles.parseBtn} onClick={handleUrl} disabled={loading()}>
+              {loading() ? (importState.status === 'fetching' ? 'Fetching...' : 'Parsing...') : 'Fetch & Parse'}
             </button>
           </div>
         )}
 
-        {result.error && !errorDismissed() && (
+        {importState.error != null && !importState.errorDismissed && (
           <div class={styles.error}>
-            <p>{result.error.message ?? String(result.error)}</p>
-            <button onClick={() => setErrorDismissed(true)}>Dismiss</button>
+            <p>{(importState.error as Error).message ?? "Error importing recipe"}</p>
+            <button onClick={() => setImportState('errorDismissed', true)}>Dismiss</button>
           </div>
         )}
       </main>

@@ -119,6 +119,19 @@
   margin: 0 0 8px;
 }
 
+.errorDetail {
+  margin: 0 0 8px;
+  padding: 8px;
+  background: rgba(198, 40, 40, 0.08);
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 .error button {
   background: none;
   border: 1px solid #c62828;
