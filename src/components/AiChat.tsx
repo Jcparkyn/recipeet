@@ -1,4 +1,4 @@
-import { createSignal, createMemo, createEffect, Show, For, onCleanup, type JSX } from 'solid-js';
+import { createSignal, createMemo, createEffect, Show, For, onCleanup, onMount, type JSX } from 'solid-js';
 import { recipes, getProgress, updateProgress, settings } from '@/lib/storage';
 import { createChatStream } from '@/lib/chat';
 import type { ChatMessage } from '@/lib/types';
@@ -18,13 +18,23 @@ export default function AiChat(props: AiChatProps) {
   const [loading, setLoading] = createSignal(false);
   const [streamText, setStreamText] = createSignal('');
   const [errorMsg, setErrorMsg] = createSignal('');
+  const [voiceSupported, setVoiceSupported] = createSignal(false);
+  const [isListening, setIsListening] = createSignal(false);
   let messagesEnd!: HTMLDivElement;
   let inputRef!: HTMLInputElement;
   let abortController: AbortController | null = null;
+  let recognition: SpeechRecognition | null = null;
+  let shouldSpeakResponse = false;
 
   const recipe = createMemo(() => recipes.find((r) => r.id === props.recipeId));
   const progress = createMemo(() => getProgress(props.recipeId));
   const messages = createMemo(() => progress()?.chatMessages ?? []);
+
+  onMount(() => {
+    const SR = (window as unknown as Record<string, unknown>).SpeechRecognition
+      || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+    setVoiceSupported(!!SR);
+  });
 
   function scrollToBottom() {
     messagesEnd?.scrollIntoView({ behavior: 'smooth' });
@@ -49,10 +59,11 @@ export default function AiChat(props: AiChatProps) {
     return msg;
   }
 
-  function send(e: Event) {
-    e.preventDefault();
-    const text = input().trim();
+  function doSend(text: string, voiceInput = false) {
     if (!text || loading()) return;
+
+    speechSynthesis.cancel();
+    shouldSpeakResponse = voiceInput;
 
     const r = recipe();
     const p = progress();
@@ -132,6 +143,12 @@ export default function AiChat(props: AiChatProps) {
 
         if (fullText) {
           addMessage('assistant', fullText);
+          if (shouldSpeakResponse) {
+            const utterance = new SpeechSynthesisUtterance(fullText);
+            utterance.lang = navigator.language || 'en-US';
+            speechSynthesis.speak(utterance);
+            shouldSpeakResponse = false;
+          }
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'An error occurred';
@@ -142,6 +159,63 @@ export default function AiChat(props: AiChatProps) {
         abortController = null;
       }
     })();
+  }
+
+  function send(e: Event) {
+    e.preventDefault();
+    doSend(input().trim());
+  }
+
+  function startListening() {
+    if (!voiceSupported() || isListening()) return;
+
+    type SRConstructor = new () => SpeechRecognition;
+    const SR = ((window as unknown as Record<string, unknown>).SpeechRecognition
+      || (window as unknown as Record<string, unknown>).webkitSpeechRecognition) as
+      SRConstructor | undefined;
+    if (!SR) return;
+
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || 'en-US';
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let final = '';
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          final += result[0]?.transcript ?? '';
+        } else {
+          interim += result[0]?.transcript ?? '';
+        }
+      }
+      if (final) {
+        setInput('');
+        recognition?.stop();
+        doSend(final.trim(), true);
+      } else if (interim) {
+        setInput(interim);
+      }
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      setErrorMsg(`Voice input error: ${event.error}`);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+    setIsListening(true);
+  }
+
+  function stopListening() {
+    recognition?.stop();
+    setIsListening(false);
   }
 
   function toggle() {
@@ -157,6 +231,8 @@ export default function AiChat(props: AiChatProps) {
 
   onCleanup(() => {
     abortController?.abort();
+    recognition?.abort();
+    speechSynthesis.cancel();
   });
 
   return (
@@ -200,6 +276,19 @@ export default function AiChat(props: AiChatProps) {
             <div ref={(el) => { messagesEnd = el; }} />
           </div>
           <form class={styles.inputArea} onSubmit={send}>
+            <Show when={voiceSupported()}>
+              <button
+                type="button"
+                class={styles.micBtn}
+                classList={{ [styles.listening]: isListening() }}
+                onClick={isListening() ? stopListening : startListening}
+                disabled={loading()}
+                aria-label={isListening() ? 'Stop listening' : 'Start voice input'}
+                title={isListening() ? 'Stop listening' : 'Start voice input'}
+              >
+                🎤
+              </button>
+            </Show>
             <input
               ref={(el) => { inputRef = el; }}
               class={styles.input}
