@@ -1,5 +1,5 @@
 import { generateText, Output } from 'ai';
-import { createDeepSeek, type DeepSeekLanguageModelOptions } from '@ai-sdk/deepseek';
+import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 import type { RecipeContent, LLMSettings, InstructionSegment, Ingredient } from './types';
 
@@ -77,9 +77,9 @@ const recipeOutputSchema = z.object({
 
 type RawRecipe = z.infer<typeof recipeOutputSchema>;
 
-export class DeepSeekParser implements RecipeParser {
+export class OpenAIParser implements RecipeParser {
   async parse(text: string, settings: LLMSettings): Promise<ParseResult> {
-    const provider = createDeepSeek({
+    const provider = createOpenAI({
       apiKey: settings.apiKey,
       baseURL: settings.baseUrl,
     });
@@ -90,12 +90,6 @@ export class DeepSeekParser implements RecipeParser {
       prompt: text,
       temperature: 0.1,
       output: Output.object({ schema: recipeOutputSchema }),
-      providerOptions: {
-        deepseek: {
-          thinking: { type: 'disabled' },
-          reasoningEffort: 'high',
-        } satisfies DeepSeekLanguageModelOptions,
-      },
     });
     console.log(result);
 
@@ -186,5 +180,5 @@ function parseSegments(
 }
 
 export function getParser(): RecipeParser {
-  return new DeepSeekParser();
+  return new OpenAIParser();
 }

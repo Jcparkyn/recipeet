@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 import { VitePWA } from 'vite-plugin-pwa';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 import path from 'node:path';
 
 export default defineConfig({
   plugins: [
+    basicSsl(),
     solid(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -25,7 +27,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/api\.deepseek\.com\/.*/,
+            urlPattern: /^https:\/\/api\.openai\.com\/.*/,
             handler: 'NetworkFirst',
             options: { cacheName: 'llm-cache', expiration: { maxEntries: 20 } },
           },

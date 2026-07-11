@@ -1,5 +1,5 @@
 import { streamText, tool, stepCountIs } from 'ai';
-import { createDeepSeek, type DeepSeekLanguageModelOptions } from '@ai-sdk/deepseek';
+import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 import type { Recipe, RecipeProgress, ChatMessage } from './types';
 import { scaleQuantity, formatQuantity } from './scaling';
@@ -77,7 +77,7 @@ export function createChatStream(
   baseUrl: string,
   model: string,
 ) {
-  const provider = createDeepSeek({
+  const provider = createOpenAI({
     apiKey,
     baseURL: baseUrl,
   });
@@ -156,11 +156,5 @@ export function createChatStream(
       ...(goToStepTool ? { go_to_step: goToStepTool } : {}),
     },
     stopWhen: stepCountIs(5),
-    providerOptions: {
-      deepseek: {
-        thinking: { type: 'disabled' },
-        reasoningEffort: 'high',
-      } satisfies DeepSeekLanguageModelOptions,
-    },
   });
 }

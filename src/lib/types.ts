@@ -84,6 +84,6 @@ export interface LLMSettings {
 
 export const DEFAULT_LLM_SETTINGS: LLMSettings = {
   apiKey: '',
-  baseUrl: 'https://api.deepseek.com/v1',
-  model: 'deepseek-v4-pro',
+  baseUrl: 'https://api.openai.com/v1',
+  model: 'gpt-4o',
 };

@@ -1,4 +1,6 @@
 import { createSignal, createMemo, createEffect, Show, For, onCleanup, onMount, type JSX } from 'solid-js';
+import { experimental_transcribe as transcribe } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { recipes, getProgress, updateProgress, settings } from '@/lib/storage';
 import { createChatStream } from '@/lib/chat';
 import type { ChatMessage } from '@/lib/types';
@@ -19,11 +21,16 @@ export default function AiChat(props: AiChatProps) {
   const [streamText, setStreamText] = createSignal('');
   const [errorMsg, setErrorMsg] = createSignal('');
   const [voiceSupported, setVoiceSupported] = createSignal(false);
-  const [isListening, setIsListening] = createSignal(false);
+  const [isRecording, setIsRecording] = createSignal(false);
+  const [voiceLoading, setVoiceLoading] = createSignal(false);
   let messagesEnd!: HTMLDivElement;
   let inputRef!: HTMLInputElement;
   let abortController: AbortController | null = null;
-  let recognition: SpeechRecognition | null = null;
+  let mediaRecorder: MediaRecorder | null = null;
+  let audioChunks: Blob[] = [];
+  let audioContext: AudioContext | null = null;
+  let silenceTimeout: ReturnType<typeof setTimeout> | null = null;
+  let silenceRaf: number | null = null;
   let shouldSpeakResponse = false;
 
   const recipe = createMemo(() => recipes.find((r) => r.id === props.recipeId));
@@ -31,9 +38,7 @@ export default function AiChat(props: AiChatProps) {
   const messages = createMemo(() => progress()?.chatMessages ?? []);
 
   onMount(() => {
-    const SR = (window as unknown as Record<string, unknown>).SpeechRecognition
-      || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
-    setVoiceSupported(!!SR);
+    setVoiceSupported(!!navigator.mediaDevices?.getUserMedia);
   });
 
   function scrollToBottom() {
@@ -166,56 +171,131 @@ export default function AiChat(props: AiChatProps) {
     doSend(input().trim());
   }
 
-  function startListening() {
-    if (!voiceSupported() || isListening()) return;
+  async function toggleRecording() {
+    if (!voiceSupported() || voiceLoading() || loading()) return;
 
-    type SRConstructor = new () => SpeechRecognition;
-    const SR = ((window as unknown as Record<string, unknown>).SpeechRecognition
-      || (window as unknown as Record<string, unknown>).webkitSpeechRecognition) as
-      SRConstructor | undefined;
-    if (!SR) return;
-
-    recognition = new SR();
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = navigator.language || 'en-US';
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let final = '';
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        if (result.isFinal) {
-          final += result[0]?.transcript ?? '';
-        } else {
-          interim += result[0]?.transcript ?? '';
-        }
-      }
-      if (final) {
-        setInput('');
-        recognition?.stop();
-        doSend(final.trim(), true);
-      } else if (interim) {
-        setInput(interim);
-      }
-    };
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      setErrorMsg(`Voice input error: ${event.error}`);
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognition.start();
-    setIsListening(true);
+    if (isRecording()) {
+      stopRecording();
+    } else {
+      await startRecording();
+    }
   }
 
-  function stopListening() {
-    recognition?.stop();
-    setIsListening(false);
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = ['audio/webm', 'audio/mp4', 'audio/ogg'].find((m) => MediaRecorder.isTypeSupported(m)) || '';
+      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        setIsRecording(false);
+        cleanupAudio();
+        stream.getTracks().forEach((t) => t.stop());
+        const audioBlob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
+        audioChunks = [];
+
+        if (audioBlob.size === 0) return;
+
+        setVoiceLoading(true);
+
+        void (async () => {
+          try {
+            const s = settings();
+            if (!s.apiKey) {
+              setErrorMsg('Please configure your API key in Settings first.');
+              return;
+            }
+
+            const provider = createOpenAI({ apiKey: s.apiKey, baseURL: s.baseUrl });
+            const buffer = await audioBlob.arrayBuffer();
+            const transcript = await transcribe({
+              model: provider.transcription('gpt-4o-mini-transcribe'),
+              audio: new Uint8Array(buffer),
+            });
+
+            if (transcript.text) {
+              doSend(transcript.text.trim(), true);
+            }
+          } catch (err) {
+            setErrorMsg(`Transcription error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          } finally {
+            setVoiceLoading(false);
+          }
+        })();
+      };
+
+      startSilenceDetection(stream);
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      setErrorMsg(`Microphone error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }
+
+  function startSilenceDetection(stream: MediaStream) {
+    audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamSource(stream);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.3;
+    source.connect(analyser);
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const SILENCE_THRESHOLD = 15;
+    const SILENCE_MS = 2000;
+    let hasSpoken = false;
+
+    function check() {
+      if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+        cleanupAudio();
+        return;
+      }
+
+      analyser.getByteFrequencyData(dataArray);
+      const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+
+      if (avg > SILENCE_THRESHOLD) {
+        hasSpoken = true;
+        if (silenceTimeout) {
+          clearTimeout(silenceTimeout);
+          silenceTimeout = null;
+        }
+      } else if (hasSpoken && !silenceTimeout) {
+        silenceTimeout = setTimeout(() => {
+          stopRecording();
+        }, SILENCE_MS);
+      }
+
+      silenceRaf = requestAnimationFrame(check);
+    }
+
+    check();
+  }
+
+  function cleanupAudio() {
+    if (silenceTimeout) {
+      clearTimeout(silenceTimeout);
+      silenceTimeout = null;
+    }
+    if (silenceRaf != null) {
+      cancelAnimationFrame(silenceRaf);
+      silenceRaf = null;
+    }
+    if (audioContext && audioContext.state !== 'closed') {
+      audioContext.close();
+      audioContext = null;
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+    }
   }
 
   function toggle() {
@@ -231,7 +311,8 @@ export default function AiChat(props: AiChatProps) {
 
   onCleanup(() => {
     abortController?.abort();
-    recognition?.abort();
+    stopRecording();
+    cleanupAudio();
     speechSynthesis.cancel();
   });
 
@@ -280,11 +361,11 @@ export default function AiChat(props: AiChatProps) {
               <button
                 type="button"
                 class={styles.micBtn}
-                classList={{ [styles.listening]: isListening() }}
-                onClick={isListening() ? stopListening : startListening}
-                disabled={loading()}
-                aria-label={isListening() ? 'Stop listening' : 'Start voice input'}
-                title={isListening() ? 'Stop listening' : 'Start voice input'}
+                classList={{ [styles.listening]: isRecording() }}
+                onClick={toggleRecording}
+                disabled={loading() || voiceLoading()}
+                aria-label={isRecording() ? 'Stop recording' : 'Start voice input'}
+                title={isRecording() ? 'Stop recording' : 'Start voice input'}
               >
                 🎤
               </button>
