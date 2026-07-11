@@ -1,5 +1,5 @@
-import { generateText, Output } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import { Agent, run, OpenAIProvider } from '@openai/agents';
+import OpenAI from 'openai';
 import { z } from 'zod';
 import type { RecipeContent, LLMSettings, InstructionSegment, Ingredient } from './types';
 
@@ -79,25 +79,28 @@ type RawRecipe = z.infer<typeof recipeOutputSchema>;
 
 export class OpenAIParser implements RecipeParser {
   async parse(text: string, settings: LLMSettings): Promise<ParseResult> {
-    const provider = createOpenAI({
+    const client = new OpenAI({
       apiKey: settings.apiKey,
       baseURL: settings.baseUrl,
+      dangerouslyAllowBrowser: true,
+    });
+    const provider = new OpenAIProvider({ openAIClient: client });
+    const model = await provider.getModel(settings.model);
+
+    const agent = new Agent({
+      name: 'Recipe Parser',
+      instructions: SYSTEM_PROMPT,
+      model,
+      outputType: recipeOutputSchema,
     });
 
-    const result = await generateText({
-      model: provider(settings.model),
-      system: SYSTEM_PROMPT,
-      prompt: text,
-      temperature: 0.1,
-      output: Output.object({ schema: recipeOutputSchema }),
-    });
-    console.log(result);
+    const result = await run(agent, text);
 
-    if (!result.output) {
+    if (!result.finalOutput) {
       throw new Error('Empty response from LLM');
     }
 
-    return validateAndTransform(result.output);
+    return validateAndTransform(result.finalOutput as RawRecipe);
   }
 }
 

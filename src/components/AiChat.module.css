@@ -167,6 +167,11 @@
   animation: pulse 1.5s infinite;
 }
 
+.micBtn.muted {
+  background: #eee;
+  border-color: #ddd;
+}
+
 .micBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;

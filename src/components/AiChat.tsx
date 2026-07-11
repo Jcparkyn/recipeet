@@ -1,8 +1,8 @@
 import { createSignal, createMemo, createEffect, Show, For, onCleanup, onMount, type JSX } from 'solid-js';
-import { experimental_transcribe as transcribe } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import { RealtimeSession } from '@openai/agents/realtime';
+import type { RealtimeItem } from '@openai/agents/realtime';
 import { recipes, getProgress, updateProgress, settings } from '@/lib/storage';
-import { createChatStream } from '@/lib/chat';
+import { createRecipeAgent } from '@/lib/chat';
 import type { ChatMessage } from '@/lib/types';
 import styles from './AiChat.module.css';
 
@@ -12,33 +12,62 @@ interface AiChatProps {
   children?: JSX.Element;
 }
 
-let chatMsgId = 0;
+const REALTIME_MODEL = 'gpt-realtime-2.1-mini';
+
+function getMessageText(item: Record<string, unknown>): string | null {
+  if (item.type !== 'message') return null;
+  if (item.role !== 'user' && item.role !== 'assistant') return null;
+  const content = item.content as Record<string, unknown>[] | undefined;
+  if (!content) return null;
+  for (const part of content) {
+    if (part.type === 'input_text' || part.type === 'output_text') {
+      const text = part.text;
+      if (typeof text === 'string' && text.trim()) return text.trim();
+    }
+  }
+  for (const part of content) {
+    if (part.type === 'input_audio' || part.type === 'output_audio') {
+      const transcript = part.transcript;
+      if (typeof transcript === 'string' && transcript.trim()) return transcript.trim();
+    }
+  }
+  return null;
+}
+
+function extractChatMessages(history: RealtimeItem[]): ChatMessage[] {
+  const messages: ChatMessage[] = [];
+  for (const item of history) {
+    const text = getMessageText(item as unknown as Record<string, unknown>);
+    if (!text) continue;
+    const role = (item as Record<string, unknown>).role as string;
+    messages.push({
+      id: (item as Record<string, unknown>).itemId as string,
+      role: role === 'user' ? 'user' : 'assistant',
+      content: text,
+      timestamp: Date.now(),
+    });
+  }
+  return messages;
+}
 
 export default function AiChat(props: AiChatProps) {
   const [isOpen, setIsOpen] = createSignal(false);
   const [input, setInput] = createSignal('');
-  const [loading, setLoading] = createSignal(false);
-  const [streamText, setStreamText] = createSignal('');
+  const [isConnecting, setIsConnecting] = createSignal(false);
+  const [isConnected, setIsConnected] = createSignal(false);
+  const [isMuted, setIsMuted] = createSignal(false);
+  const [isSpeaking, setIsSpeaking] = createSignal(false);
   const [errorMsg, setErrorMsg] = createSignal('');
-  const [voiceSupported, setVoiceSupported] = createSignal(false);
-  const [isRecording, setIsRecording] = createSignal(false);
-  const [voiceLoading, setVoiceLoading] = createSignal(false);
   let messagesEnd!: HTMLDivElement;
   let inputRef!: HTMLInputElement;
-  let abortController: AbortController | null = null;
-  let mediaRecorder: MediaRecorder | null = null;
-  let audioChunks: Blob[] = [];
-  let audioContext: AudioContext | null = null;
-  let silenceTimeout: ReturnType<typeof setTimeout> | null = null;
-  let silenceRaf: number | null = null;
-  let shouldSpeakResponse = false;
+  let session: RealtimeSession | null = null;
 
   const recipe = createMemo(() => recipes.find((r) => r.id === props.recipeId));
   const progress = createMemo(() => getProgress(props.recipeId));
   const messages = createMemo(() => progress()?.chatMessages ?? []);
 
   onMount(() => {
-    setVoiceSupported(!!navigator.mediaDevices?.getUserMedia);
+    void navigator.mediaDevices?.getUserMedia;
   });
 
   function scrollToBottom() {
@@ -47,29 +76,37 @@ export default function AiChat(props: AiChatProps) {
 
   createEffect(() => {
     messages();
-    streamText();
     if (isOpen()) queueMicrotask(scrollToBottom);
   });
 
-  function addMessage(role: 'user' | 'assistant', content: string) {
-    const msg: ChatMessage = {
-      id: `m${++chatMsgId}`,
-      role,
-      content,
-      timestamp: Date.now(),
-    };
-    updateProgress(props.recipeId, (p) => {
-      p.chatMessages = [...p.chatMessages, msg];
+  async function getEphemeralToken(apiKey: string): Promise<string> {
+    const res = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        session: {
+          type: 'realtime',
+          model: REALTIME_MODEL,
+        },
+      }),
     });
-    return msg;
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to get ephemeral token: ${res.status} ${text}`);
+    }
+
+    const data = await res.json();
+    if (!data.value) {
+      throw new Error('No ephemeral token in response');
+    }
+    return data.value;
   }
 
-  function doSend(text: string, voiceInput = false) {
-    if (!text || loading()) return;
-
-    speechSynthesis.cancel();
-    shouldSpeakResponse = voiceInput;
-
+  async function connectSession() {
     const r = recipe();
     const p = progress();
     const s = settings();
@@ -80,222 +117,120 @@ export default function AiChat(props: AiChatProps) {
       return;
     }
 
-    setInput('');
+    setIsConnecting(true);
     setErrorMsg('');
-    setStreamText('');
-    setLoading(true);
 
-    const history = messages();
-    addMessage('user', text);
-
-    abortController = new AbortController();
-
-    void (async () => {
-      try {
-        const result = createChatStream(
-          r,
-          p,
-          history,
-          text,
-          {
-            setSubstep(substepId, checked) {
-              const cp = getProgress(props.recipeId);
-              if (!cp) return;
-              const current = new Set(cp.checkedSubsteps);
-              if (checked) current.add(substepId);
-              else current.delete(substepId);
-              updateProgress(props.recipeId, (pp) => { pp.checkedSubsteps = [...current]; });
-            },
-            completeStep(stepIndex) {
-              const cr = recipes.find((r2) => r2.id === props.recipeId);
-              if (!cr) return;
-              const step = cr.content.steps[stepIndex];
-              if (!step) return;
-              const cp = getProgress(props.recipeId);
-              if (!cp) return;
-              const current = new Set(cp.checkedSubsteps);
-              for (const sub of step.substeps) current.add(sub.id);
-              updateProgress(props.recipeId, (pp) => { pp.checkedSubsteps = [...current]; });
-            },
-            goToStep(stepIndex) {
-              updateProgress(props.recipeId, (pp) => { pp.currentCookingStep = stepIndex; });
-            },
-            getProgress() {
-              const cp = getProgress(props.recipeId);
-              return cp ?? {
-                recipeId: props.recipeId,
-                currentServings: 0,
-                currentCookingStep: 0,
-                checkedShoppingItems: [],
-                checkedSubsteps: [],
-                checkedIngredients: [],
-                ingredientUnitModes: {},
-                chatMessages: [],
-              };
-            },
+    try {
+      const agent = createRecipeAgent(
+        r,
+        p,
+        {
+          setSubstep(substepId, checked) {
+            const cp = getProgress(props.recipeId);
+            if (!cp) return;
+            const current = new Set(cp.checkedSubsteps);
+            if (checked) current.add(substepId);
+            else current.delete(substepId);
+            updateProgress(props.recipeId, (pp) => { pp.checkedSubsteps = [...current]; });
           },
-          props.isCookMode,
-          s.apiKey,
-          s.baseUrl,
-          s.model,
-        );
+          completeStep(stepIndex) {
+            const cr = recipes.find((r2) => r2.id === props.recipeId);
+            if (!cr) return;
+            const step = cr.content.steps[stepIndex];
+            if (!step) return;
+            const cp = getProgress(props.recipeId);
+            if (!cp) return;
+            const current = new Set(cp.checkedSubsteps);
+            for (const sub of step.substeps) current.add(sub.id);
+            updateProgress(props.recipeId, (pp) => { pp.checkedSubsteps = [...current]; });
+          },
+          goToStep(stepIndex) {
+            updateProgress(props.recipeId, (pp) => { pp.currentCookingStep = stepIndex; });
+          },
+          getProgress() {
+            const cp = getProgress(props.recipeId);
+            return cp ?? {
+              recipeId: props.recipeId,
+              currentServings: 0,
+              currentCookingStep: 0,
+              checkedShoppingItems: [],
+              checkedSubsteps: [],
+              checkedIngredients: [],
+              ingredientUnitModes: {},
+              chatMessages: [],
+            };
+          },
+        },
+        props.isCookMode,
+      );
 
-        let fullText = '';
-        for await (const textPart of result.textStream) {
-          fullText += textPart;
-          setStreamText(fullText);
-        }
+      session = new RealtimeSession(agent, {
+        model: REALTIME_MODEL,
+      });
 
-        if (fullText) {
-          addMessage('assistant', fullText);
-          if (shouldSpeakResponse) {
-            const utterance = new SpeechSynthesisUtterance(fullText);
-            utterance.lang = navigator.language || 'en-US';
-            speechSynthesis.speak(utterance);
-            shouldSpeakResponse = false;
-          }
-        }
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'An error occurred';
+      session.on('history_updated', (history: RealtimeItem[]) => {
+        const chatMessages = extractChatMessages(history);
+        updateProgress(props.recipeId, (pp) => {
+          pp.chatMessages = chatMessages;
+        });
+        queueMicrotask(scrollToBottom);
+      });
+
+      session.on('audio_start', () => setIsSpeaking(true));
+      session.on('audio_stopped', () => setIsSpeaking(false));
+
+      session.on('error', (err: { type: string; error: unknown }) => {
+        const msg = err.error instanceof Error ? err.error.message : String(err.error);
         setErrorMsg(msg);
-      } finally {
-        setLoading(false);
-        setStreamText('');
-        abortController = null;
-      }
-    })();
+      });
+
+      const token = await getEphemeralToken(s.apiKey);
+      await session.connect({ apiKey: token });
+
+      setIsConnected(true);
+      setIsMuted(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Connection failed';
+      setErrorMsg(msg);
+      session?.close();
+      session = null;
+    } finally {
+      setIsConnecting(false);
+    }
+  }
+
+  function disconnectSession() {
+    if (session) {
+      session.close();
+      session = null;
+    }
+    setIsConnected(false);
+    setIsMuted(false);
+    setIsSpeaking(false);
+  }
+
+  createEffect(() => {
+    const open = isOpen();
+    if (open && !isConnected() && !isConnecting()) {
+      void connectSession();
+    } else if (!open && isConnected()) {
+      disconnectSession();
+    }
+  });
+
+  function toggleMute() {
+    if (!session) return;
+    const newMuted = !isMuted();
+    session.mute(newMuted);
+    setIsMuted(newMuted);
   }
 
   function send(e: Event) {
     e.preventDefault();
-    doSend(input().trim());
-  }
-
-  async function toggleRecording() {
-    if (!voiceSupported() || voiceLoading() || loading()) return;
-
-    if (isRecording()) {
-      stopRecording();
-    } else {
-      await startRecording();
-    }
-  }
-
-  async function startRecording() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = ['audio/webm', 'audio/mp4', 'audio/ogg'].find((m) => MediaRecorder.isTypeSupported(m)) || '';
-      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      audioChunks = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunks.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        setIsRecording(false);
-        cleanupAudio();
-        stream.getTracks().forEach((t) => t.stop());
-        const audioBlob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
-        audioChunks = [];
-
-        if (audioBlob.size === 0) return;
-
-        setVoiceLoading(true);
-
-        void (async () => {
-          try {
-            const s = settings();
-            if (!s.apiKey) {
-              setErrorMsg('Please configure your API key in Settings first.');
-              return;
-            }
-
-            const provider = createOpenAI({ apiKey: s.apiKey, baseURL: s.baseUrl });
-            const buffer = await audioBlob.arrayBuffer();
-            const transcript = await transcribe({
-              model: provider.transcription('gpt-4o-mini-transcribe'),
-              audio: new Uint8Array(buffer),
-            });
-
-            if (transcript.text) {
-              doSend(transcript.text.trim(), true);
-            }
-          } catch (err) {
-            setErrorMsg(`Transcription error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-          } finally {
-            setVoiceLoading(false);
-          }
-        })();
-      };
-
-      startSilenceDetection(stream);
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (err) {
-      setErrorMsg(`Microphone error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    }
-  }
-
-  function startSilenceDetection(stream: MediaStream) {
-    audioContext = new AudioContext();
-    const source = audioContext.createMediaStreamSource(stream);
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    analyser.smoothingTimeConstant = 0.3;
-    source.connect(analyser);
-
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-    const SILENCE_THRESHOLD = 15;
-    const SILENCE_MS = 2000;
-    let hasSpoken = false;
-
-    function check() {
-      if (!mediaRecorder || mediaRecorder.state !== 'recording') {
-        cleanupAudio();
-        return;
-      }
-
-      analyser.getByteFrequencyData(dataArray);
-      const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-
-      if (avg > SILENCE_THRESHOLD) {
-        hasSpoken = true;
-        if (silenceTimeout) {
-          clearTimeout(silenceTimeout);
-          silenceTimeout = null;
-        }
-      } else if (hasSpoken && !silenceTimeout) {
-        silenceTimeout = setTimeout(() => {
-          stopRecording();
-        }, SILENCE_MS);
-      }
-
-      silenceRaf = requestAnimationFrame(check);
-    }
-
-    check();
-  }
-
-  function cleanupAudio() {
-    if (silenceTimeout) {
-      clearTimeout(silenceTimeout);
-      silenceTimeout = null;
-    }
-    if (silenceRaf != null) {
-      cancelAnimationFrame(silenceRaf);
-      silenceRaf = null;
-    }
-    if (audioContext && audioContext.state !== 'closed') {
-      audioContext.close();
-      audioContext = null;
-    }
-  }
-
-  function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
-    }
+    const text = input().trim();
+    if (!text || !session) return;
+    setInput('');
+    session.sendMessage(text);
   }
 
   function toggle() {
@@ -310,10 +245,7 @@ export default function AiChat(props: AiChatProps) {
   }
 
   onCleanup(() => {
-    abortController?.abort();
-    stopRecording();
-    cleanupAudio();
-    speechSynthesis.cancel();
+    disconnectSession();
   });
 
   return (
@@ -321,7 +253,14 @@ export default function AiChat(props: AiChatProps) {
       <Show when={isOpen()}>
         <div class={styles.panel}>
           <div class={styles.header}>
-            <span class={styles.headerTitle}>AI Assistant</span>
+            <span class={styles.headerTitle}>
+              AI Assistant
+              <Show when={isConnecting()}>
+                <span style="font-weight: normal; color: #999; margin-left: 8px; font-size: 0.8rem;">
+                  connecting...
+                </span>
+              </Show>
+            </span>
             <button class={styles.closeBtn} onClick={toggle} aria-label="Close chat">
               ✕
             </button>
@@ -340,15 +279,13 @@ export default function AiChat(props: AiChatProps) {
                 </div>
               )}
             </For>
-            <Show when={loading()}>
+            <Show when={isSpeaking()}>
               <div class={styles.bubble} classList={{ [styles.assistant]: true }}>
-                {streamText() || (
-                  <span class={styles.typing}>
-                    <span class={styles.dot} />
-                    <span class={styles.dot} />
-                    <span class={styles.dot} />
-                  </span>
-                )}
+                <span class={styles.typing}>
+                  <span class={styles.dot} />
+                  <span class={styles.dot} />
+                  <span class={styles.dot} />
+                </span>
               </div>
             </Show>
             <Show when={errorMsg()}>
@@ -357,32 +294,33 @@ export default function AiChat(props: AiChatProps) {
             <div ref={(el) => { messagesEnd = el; }} />
           </div>
           <form class={styles.inputArea} onSubmit={send}>
-            <Show when={voiceSupported()}>
-              <button
-                type="button"
-                class={styles.micBtn}
-                classList={{ [styles.listening]: isRecording() }}
-                onClick={toggleRecording}
-                disabled={loading() || voiceLoading()}
-                aria-label={isRecording() ? 'Stop recording' : 'Start voice input'}
-                title={isRecording() ? 'Stop recording' : 'Start voice input'}
-              >
-                🎤
-              </button>
-            </Show>
+            <button
+              type="button"
+              class={styles.micBtn}
+              classList={{
+                [styles.listening]: isConnected() && !isMuted(),
+                [styles.muted]: isMuted(),
+              }}
+              onClick={toggleMute}
+              disabled={!isConnected() || isConnecting()}
+              aria-label={isMuted() ? 'Unmute microphone' : 'Mute microphone'}
+              title={isMuted() ? 'Unmute microphone' : 'Mute microphone'}
+            >
+              {isMuted() ? '🔇' : '🎤'}
+            </button>
             <input
               ref={(el) => { inputRef = el; }}
               class={styles.input}
               type="text"
               value={input()}
               onInput={(e) => setInput(e.currentTarget.value)}
-              placeholder="Ask about this recipe..."
-              disabled={loading()}
+              placeholder={isConnected() ? 'Ask about this recipe...' : 'Connecting...'}
+              disabled={!isConnected() || isConnecting()}
             />
             <button
               class={styles.sendBtn}
               type="submit"
-              disabled={loading() || !input().trim()}
+              disabled={!isConnected() || isConnecting() || !input().trim()}
             >
               Send
             </button>
@@ -392,7 +330,7 @@ export default function AiChat(props: AiChatProps) {
       <div class={styles.bottomBar}>
         <button
           class={styles.chatBtn}
-          classList={{ [styles.active]: isOpen() }}
+          classList={{ [styles.active]: isOpen() || isConnecting() }}
           onClick={toggle}
           aria-label="AI Chat"
         >

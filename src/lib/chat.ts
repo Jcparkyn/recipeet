@@ -1,7 +1,7 @@
-import { streamText, tool, stepCountIs } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import { RealtimeAgent } from '@openai/agents/realtime';
+import { tool } from '@openai/agents/realtime';
 import { z } from 'zod';
-import type { Recipe, RecipeProgress, ChatMessage } from './types';
+import type { Recipe, RecipeProgress } from './types';
 import { scaleQuantity, formatQuantity } from './scaling';
 
 export interface ChatTools {
@@ -59,102 +59,72 @@ Guidelines:
 `;
 }
 
-function buildProgressMessage(progress: RecipeProgress, recipe: Recipe): string {
-  const pct = recipe.content.steps.length > 0
-    ? Math.round((progress.checkedSubsteps.length / recipe.content.steps.reduce((sum, s) => sum + s.substeps.length, 0)) * 100)
-    : 0;
-  return `Current state: Step ${progress.currentCookingStep + 1} of ${recipe.content.steps.length}, ${progress.currentServings} servings, ${pct}% substeps done.`;
-}
-
-export function createChatStream(
+export function createRecipeAgent(
   recipe: Recipe,
   progress: RecipeProgress,
-  chatHistory: ChatMessage[],
-  userMessage: string,
   tools: ChatTools,
   isCookMode: boolean,
-  apiKey: string,
-  baseUrl: string,
-  model: string,
-) {
-  const provider = createOpenAI({
-    apiKey,
-    baseURL: baseUrl,
-  });
+): RealtimeAgent {
+  const instructions = buildSystemPrompt(recipe, progress.currentServings);
 
-  const systemPrompt = buildSystemPrompt(recipe, progress.currentServings);
+  const systemTools = [
+    tool({
+      name: 'update_substep',
+      description: 'Mark a substep as checked (done) or unchecked.',
+      parameters: z.object({
+        substepId: z.string().describe('The ID of the substep to update'),
+        checked: z.boolean().describe('True to mark as done, false to mark as not done'),
+      }),
+      execute: async ({ substepId, checked }) => {
+        tools.setSubstep(substepId, checked);
+        return 'Substep updated.';
+      },
+    }),
 
-  const messages = [
-    ...chatHistory.map((msg) => ({
-      role: msg.role as 'user' | 'assistant',
-      content: msg.content,
-    })),
-    {
-      role: 'user' as const,
-      content: `[progress: ${buildProgressMessage(progress, recipe)}]\n\n${userMessage}`,
-    },
+    tool({
+      name: 'complete_step',
+      description: 'Mark all substeps in a step as complete.',
+      parameters: z.object({
+        stepIndex: z.number().int().min(0).describe('Zero-based index of the step'),
+      }),
+      execute: async ({ stepIndex }) => {
+        tools.completeStep(stepIndex);
+        return 'Step completed.';
+      },
+    }),
+
+    tool({
+      name: 'get_progress',
+      description: 'Get the current cooking progress including servings.',
+      parameters: z.object({}),
+      execute: async () => {
+        const p = tools.getProgress();
+        return JSON.stringify({
+          currentStep: p.currentCookingStep,
+          totalSteps: recipe.content.steps.length,
+          currentServings: p.currentServings,
+          checkedSubsteps: p.checkedSubsteps,
+          checkedIngredients: p.checkedIngredients,
+        });
+      },
+    }),
   ];
 
-  const updateSubstepTool = tool({
-    description: 'Mark a substep as checked (done) or unchecked. Use when the user completes or uncompletes a substep action.',
-    inputSchema: z.object({
-      substepId: z.string().describe('The ID of the substep to update'),
-      checked: z.boolean().describe('True to mark as done, false to mark as not done'),
-    }),
-    execute: async ({ substepId, checked }) => {
-      tools.setSubstep(substepId, checked);
-      return { success: true };
-    },
-  });
-
-  const completeStepTool = tool({
-    description: 'Mark all substeps in a specific step as complete.',
-    inputSchema: z.object({
-      stepIndex: z.number().int().min(0).describe('Zero-based index of the step to complete'),
+  const goToStepTool = tool({
+    name: 'go_to_step',
+    description: 'Navigate to a specific step.',
+    parameters: z.object({
+      stepIndex: z.number().int().min(0).describe('Zero-based index of the step'),
     }),
     execute: async ({ stepIndex }) => {
-      tools.completeStep(stepIndex);
-      return { success: true };
+      tools.goToStep(stepIndex);
+      return `Navigated to step ${stepIndex}.`;
     },
   });
 
-  const getProgressTool = tool({
-    description: 'Get the current cooking progress status.',
-    inputSchema: z.object({}),
-    execute: async () => {
-      const p = tools.getProgress();
-      return {
-        currentStep: p.currentCookingStep,
-        totalSteps: recipe.content.steps.length,
-        checkedSubsteps: p.checkedSubsteps,
-        checkedIngredients: p.checkedIngredients,
-      };
-    },
-  });
-
-  const goToStepTool = isCookMode
-    ? tool({
-        description: 'Navigate to a specific step by its index.',
-        inputSchema: z.object({
-          stepIndex: z.number().int().min(0).describe('Zero-based index of the step to navigate to'),
-        }),
-        execute: async ({ stepIndex }) => {
-          tools.goToStep(stepIndex);
-          return { success: true };
-        },
-      })
-    : null;
-
-  return streamText({
-    model: provider(model),
-    system: systemPrompt,
-    messages,
-    tools: {
-      update_substep: updateSubstepTool,
-      complete_step: completeStepTool,
-      get_progress: getProgressTool,
-      ...(goToStepTool ? { go_to_step: goToStepTool } : {}),
-    },
-    stopWhen: stepCountIs(5),
+  return new RealtimeAgent({
+    name: 'Cooking Assistant',
+    instructions,
+    tools: isCookMode ? [...systemTools, goToStepTool] : systemTools,
   });
 }
