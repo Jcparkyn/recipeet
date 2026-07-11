@@ -166,6 +166,13 @@ export default function AiChat(props: AiChatProps) {
 
       session = new RealtimeSession(agent, {
         model: REALTIME_MODEL,
+        config: {
+          audio: {
+            output: {
+              speed: 1.5,
+            },
+          },
+        },
       });
 
       session.on('history_updated', (history: RealtimeItem[]) => {
