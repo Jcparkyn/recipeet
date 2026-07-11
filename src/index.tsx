@@ -1,4 +1,6 @@
 import { render } from 'solid-js/web';
+import '@fontsource-variable/lora';
+import '@fontsource-variable/lora/wght-italic.css';
 import './index.css';
 import App from './App';
 
