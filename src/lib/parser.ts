@@ -17,26 +17,26 @@ const ING_MARKER = /\[\[ing:(\d+)\]\]/g;
 const SYSTEM_PROMPT = `You are a recipe parser. Given unstructured recipe text, extract structured recipe data.
 
 Structure:
-- Reorder steps so that long-running background tasks (e.g. preheating oven, bringing water to a boil, marinating) start BEFORE shorter prep steps like chopping and measuring. The goal is that by the time the food is ready to go in, the oven is already hot or the water is already boiling.
-- Prep work (chopping, measuring, marinating) should still come before cooking steps that depend on them.
-- Time-sensitive prep (e.g. "cut meat before it goes in a hot pan") gets its own step BEFORE the cooking step that needs it.
-- Split into separate substeps aggressively. A substep may contain multiple ingredient actions (add, stir, mix, measure) but at most ONE timed cooking/waiting section. Whenever the source describes a cooking action (cook, simmer, fry, boil, bake, roast, sauté, rest, etc.) followed by another cooking action with different timing, split them into different substeps. Example: "add [[ing:0]], cook for 2 min, add [[ing:1]], cook for 4 min" must be TWO substeps — the first ending at "2 min", the second starting with "add [[ing:1]]". Conversely, "fry [[ing:0]] for 3 min, then set aside" is a single substep because there is only one cooking section.
-- As a rough guideline, steps should each have around 2-4 substeps. More substeps is okay if they're very short, and one substep is okay if it's unrelated to nearby steps.
+- Reorder sections so that long-running background tasks (e.g. preheating oven, bringing water to a boil, marinating) start BEFORE shorter prep sections like chopping and measuring. The goal is that by the time the food is ready to go in, the oven is already hot or the water is already boiling.
+- Prep work (chopping, measuring, marinating) should still come before cooking sections that depend on them.
+- Time-sensitive prep (e.g. "cut meat before it goes in a hot pan") gets its own section BEFORE the cooking section that needs it.
+- Split into separate steps aggressively. A step may contain multiple ingredient actions (add, stir, mix, measure) but at most ONE timed cooking/waiting section. Whenever the source describes a cooking action (cook, simmer, fry, boil, bake, roast, sauté, rest, etc.) followed by another cooking action with different timing, split them into different steps. Example: "add [[ing:0]], cook for 2 min, add [[ing:1]], cook for 4 min" must be TWO steps — the first ending at "2 min", the second starting with "add [[ing:1]]". Conversely, "fry [[ing:0]] for 3 min, then set aside" is a single step because there is only one cooking section.
+- As a rough guideline, sections should each have around 2-4 steps. More steps is okay if they're very short, and one step is okay if it's unrelated to nearby sections.
 
 Ingredients:
-- Every substep instruction must use [[ing:N]] markers where an ingredient is used (N = zero-based index in ingredients[]). Do NOT write the ingredient name or quantity in the instruction text — the [[ing:N]] marker replaces it entirely. Example: "Dice [[ing:0]] into small cubes" not "Dice 2 onions into small cubes".
+- Every step instruction must use [[ing:N]] markers where an ingredient is used (N = zero-based index in ingredients[]). Do NOT write the ingredient name or quantity in the instruction text — the [[ing:N]] marker replaces it entirely. Example: "Dice [[ing:0]] into small cubes" not "Dice 2 onions into small cubes".
 - Categorize each ingredient using standard AU grocery store aisle names, title-cased. Examples (not exhaustive): Produce, Dairy, Meat, Pantry, Spices, Bakery, Frozen. You don't have to follow the categories used in the original recipe, which might be a different system.
-- Non-urgent measuring (e.g. "add 1 tsp paprika to sauce") stays inline in the cooking substep.
+- Non-urgent measuring (e.g. "add 1 tsp paprika to sauce") stays inline in the cooking step.
 - Extract preparation notes, substitutions, or special qualities from ingredient text (e.g. "cold, cubed", "peeled and diced", "or margarine"). Include in the "notes" field of each ingredient. Leave empty if none.
-- If an ingredient is used in multiple steps/substeps, make multiple entries for that ingredient with the same name.
+- If an ingredient is used in multiple sections/steps, make multiple entries for that ingredient with the same name.
 - If the recipe contains "either/or" ingredients (e.g. chicken OR pork, parsley OR coriander), they must be put in a separate category heading, e.g. "Protein (choose 1)".
 
 Timing:
-- Estimate the time each substep takes. Include "handsOnTime" (active work in minutes, e.g. chopping, stirring) and "waitTime" (passive time in minutes, e.g. baking, simmering, resting). Both are numbers in minutes, omit if zero. Examples: dicing chicken is {"handsOnTime": 3}; frying is {"handsOnTime": 2, "waitTime": 8}.
+- Estimate the time each step takes. Include "handsOnTime" (active work in minutes, e.g. chopping, stirring) and "waitTime" (passive time in minutes, e.g. baking, simmering, resting). Both are numbers in minutes, omit if zero. Examples: dicing chicken is {"handsOnTime": 3}; frying is {"handsOnTime": 2, "waitTime": 8}.
 
 Notes:
-- Include any general notes about a step (tips, warnings, explanations) in the "notes" field. Omit or leave empty if there are no notable notes. This should NOT include a summary or duration/timing info, just extra useful details from the recipe.
-- Identify up to 2 relevant image URLs from the original page content (the markdown may contain ![alt](url) references) that illustrate each step. Include them in an "images" array on each step object. Only include images directly useful for understanding that specific step. Use an empty array if no relevant images exist.
+- Include any general notes about a section (tips, warnings, explanations) in the "notes" field. Omit or leave empty if there are no notable notes. This should NOT include a summary or duration/timing info, just extra useful details from the recipe.
+- Identify up to 2 relevant image URLs from the original page content (the markdown may contain ![alt](url) references) that illustrate each section. Include them in an "images" array on each section object. Only include images directly useful for understanding that specific section. Use an empty array if no relevant images exist.
 
 Quantities:
 - Guess the number of servings based on quantities, if not specified explicitly in the recipe.
@@ -54,25 +54,25 @@ const ingredientSchema = z.object({
   category: z.string().optional(),
 });
 
-const substepSchema = z.object({
+const stepSchema = z.object({
   instruction: z.string().min(1),
   handsOnTime: z.number().nonnegative().optional(),
   waitTime: z.number().nonnegative().optional(),
 });
 
-const stepSchema = z.object({
+const sectionSchema = z.object({
   title: z.string().min(1),
   order: z.number(),
   notes: z.string().optional(),
   images: z.array(z.string()).optional(),
-  substeps: z.array(substepSchema).min(1),
+  steps: z.array(stepSchema).min(1),
 });
 
 const recipeOutputSchema = z.object({
   title: z.string().min(1),
   originalServings: z.coerce.number().positive().optional(),
   ingredients: z.array(ingredientSchema).min(1),
-  steps: z.array(stepSchema).min(1),
+  sections: z.array(sectionSchema).min(1),
 });
 
 type RawRecipe = z.infer<typeof recipeOutputSchema>;
@@ -117,30 +117,30 @@ function validateAndTransform(raw: RawRecipe): ParseResult {
     category: ing.category || undefined,
   }));
 
-  const steps = raw.steps.map((step, si) => ({
+  const sections = raw.sections.map((section, si) => ({
     id: String(nextId++),
-    title: step.title || `Step ${si + 1}`,
-    order: step.order ?? si,
-    notes: step.notes || undefined,
-    images: (step.images || []).filter((u) => u.length > 0).slice(0, 2),
-    substeps: (step.substeps || []).map((sub) => {
-      const instruction = sub.instruction || '';
+    title: section.title || `Section ${si + 1}`,
+    order: section.order ?? si,
+    notes: section.notes || undefined,
+    images: (section.images || []).filter((u) => u.length > 0).slice(0, 2),
+    steps: (section.steps || []).map((step) => {
+      const instruction = step.instruction || '';
       const segments = parseSegments(instruction, ingredients);
 
       return {
         id: String(nextId++),
         instruction,
         segments,
-        handsOnTime: sub.handsOnTime && sub.handsOnTime > 0 ? sub.handsOnTime : undefined,
-        waitTime: sub.waitTime && sub.waitTime > 0 ? sub.waitTime : undefined,
+        handsOnTime: step.handsOnTime && step.handsOnTime > 0 ? step.handsOnTime : undefined,
+        waitTime: step.waitTime && step.waitTime > 0 ? step.waitTime : undefined,
       };
     }),
   }));
 
-  steps.sort((a, b) => a.order - b.order);
+  sections.sort((a, b) => a.order - b.order);
 
   return {
-    content: { title: raw.title, originalServings: raw.originalServings ?? 1, ingredients, steps },
+    content: { title: raw.title, originalServings: raw.originalServings ?? 1, ingredients, sections },
     warnings: warnings.length > 0 ? warnings : undefined,
   };
 }

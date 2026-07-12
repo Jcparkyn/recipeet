@@ -231,7 +231,7 @@
   opacity: 0.7;
 }
 
-.stepList {
+.sectionList {
   padding-left: 20px;
   margin: 0;
   display: flex;
@@ -239,7 +239,7 @@
   gap: 8px;
 }
 
-.step {
+.section {
   font-size: 0.9rem;
   padding: 6px 0;
   display: flex;
@@ -248,12 +248,12 @@
   gap: 4px;
 }
 
-.stepTitle {
+.sectionName {
   font-family: var(--font-heading);
   font-weight: 500;
 }
 
-.stepInfoBtn {
+.sectionInfoBtn {
   background: none;
   border: none;
   font-size: 0.85rem;
@@ -275,7 +275,7 @@
   padding: 24px;
 }
 
-.stepPopover {
+.sectionPopover {
   background: white;
   border-radius: 12px;
   padding: 20px 24px;
@@ -285,7 +285,7 @@
   box-shadow: 0 4px 24px rgba(0,0,0,0.15);
 }
 
-.stepPopoverText {
+.sectionPopoverText {
   margin: 0;
   font-size: 0.9rem;
   line-height: 1.5;
@@ -340,7 +340,7 @@
   color: #333;
 }
 
-.stepImages {
+.sectionImages {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -348,7 +348,7 @@
   width: 100%;
 }
 
-.stepImage {
+.sectionImage {
   width: 100%;
   border-radius: 10px;
   object-fit: contain;

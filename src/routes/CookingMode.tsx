@@ -14,38 +14,38 @@ export default function CookingMode() {
   const recipe = createMemo(() => recipes.find((r) => r.id === recipeId));
   const progress = createMemo(() => getProgress(recipeId));
 
-  const steps = createMemo(() => recipe()?.content.steps ?? []);
-  const currentIdx = createMemo(() => progress()?.currentCookingStep ?? 0);
-  const currentStep = createMemo(() => steps()[currentIdx()]);
-  const currentImages = createMemo(() => currentStep()?.images?.filter(Boolean) ?? []);
-  const checkedSubsteps = createMemo(() => new Set(progress()?.checkedSubsteps));
+  const sections = createMemo(() => recipe()?.content.sections ?? []);
+  const currentIdx = createMemo(() => progress()?.currentCookingSection ?? 0);
+  const currentSection = createMemo(() => sections()[currentIdx()]);
+  const currentImages = createMemo(() => currentSection()?.images?.filter(Boolean) ?? []);
+  const checkedSteps = createMemo(() => new Set(progress()?.checkedSteps));
   const checkedIngredients = createMemo(() => new Set(progress()?.checkedIngredients));
 
-  const stepChecked = createMemo(() => {
-    const step = currentStep();
-    if (!step) return false;
-    return step.substeps.length > 0 && step.substeps.every((sub) => checkedSubsteps().has(sub.id));
+  const sectionChecked = createMemo(() => {
+    const section = currentSection();
+    if (!section) return false;
+    return section.steps.length > 0 && section.steps.every((step) => checkedSteps().has(step.id));
   });
 
-  const isLastStep = createMemo(() => currentIdx() >= steps().length - 1);
-  const isFirstStep = createMemo(() => currentIdx() <= 0);
+  const isLastSection = createMemo(() => currentIdx() >= sections().length - 1);
+  const isFirstSection = createMemo(() => currentIdx() <= 0);
   const handsOnTimes = createMemo(() => {
-    const allSteps = steps();
-    const checkSubs = checkedSubsteps();
+    const allSections = sections();
+    const checkSteps = checkedSteps();
     const idx = currentIdx();
     let completedTime = 0;
     let totalTime = 0;
-    for (let i = 0; i < allSteps.length; i++) {
-      for (const sub of allSteps[i].substeps) {
-        const time = sub.handsOnTime ?? 0;
+    for (let i = 0; i < allSections.length; i++) {
+      for (const step of allSections[i].steps) {
+        const time = step.handsOnTime ?? 0;
         totalTime += time;
-        if (i < idx || (i === idx && checkSubs.has(sub.id))) {
+        if (i < idx || (i === idx && checkSteps.has(step.id))) {
           completedTime += time;
         }
       }
     }
     const percent = totalTime === 0
-      ? ((idx + 1) / allSteps.length) * 100
+      ? ((idx + 1) / allSections.length) * 100
       : (completedTime / totalTime) * 100;
     return { completedTime, totalTime, percent };
   });
@@ -75,42 +75,42 @@ export default function CookingMode() {
     updateProgress(p.recipeId, (pp) => { pp.checkedIngredients = [...current]; });
   }
 
-  function toggleSubstep(subId: string) {
+  function toggleStep(stepId: string) {
     const p = progress();
     if (!p) return;
-    const current = new Set(p.checkedSubsteps);
-    if (current.has(subId)) {
-      current.delete(subId);
+    const current = new Set(p.checkedSteps);
+    if (current.has(stepId)) {
+      current.delete(stepId);
     } else {
-      current.add(subId);
+      current.add(stepId);
     }
-    updateProgress(p.recipeId, (pp) => { pp.checkedSubsteps = [...current]; });
+    updateProgress(p.recipeId, (pp) => { pp.checkedSteps = [...current]; });
   }
 
-  function toggleStep() {
+  function toggleSection() {
     const p = progress();
-    const step = currentStep();
-    if (!p || !step) return;
-    const currentSubs = new Set(p.checkedSubsteps);
+    const section = currentSection();
+    if (!p || !section) return;
+    const currentSteps = new Set(p.checkedSteps);
 
-    if (stepChecked()) {
-      for (const sub of step.substeps) currentSubs.delete(sub.id);
+    if (sectionChecked()) {
+      for (const step of section.steps) currentSteps.delete(step.id);
     } else {
-      for (const sub of step.substeps) currentSubs.add(sub.id);
+      for (const step of section.steps) currentSteps.add(step.id);
     }
 
-    updateProgress(p.recipeId, (pp) => { pp.checkedSubsteps = [...currentSubs]; });
+    updateProgress(p.recipeId, (pp) => { pp.checkedSteps = [...currentSteps]; });
   }
 
   function goTo(idx: number) {
     const r = recipe();
-    if (r && idx >= 0 && idx < r.content.steps.length) {
-      updateProgress(r.id, (pp) => { pp.currentCookingStep = idx; });
+    if (r && idx >= 0 && idx < r.content.sections.length) {
+      updateProgress(r.id, (pp) => { pp.currentCookingSection = idx; });
     }
   }
 
   function next() {
-    if (isLastStep()) {
+    if (isLastSection()) {
       setCompleted(true);
     } else {
       goTo(currentIdx() + 1);
@@ -153,8 +153,8 @@ export default function CookingMode() {
             ←
           </button>
           <div class={styles.headerCenter}>
-            <span class={styles.stepCount}>
-              Step {currentIdx() + 1} of {steps().length}
+            <span class={styles.sectionCount}>
+              Section {currentIdx() + 1} of {sections().length}
             </span>
             <div class={styles.progressRow}>
               <span class={styles.progressLabel}>{handsOnTimes().completedTime}m</span>
@@ -172,41 +172,41 @@ export default function CookingMode() {
 
         <main class={styles.main}>
           <div>
-            <div class={styles.stepHeader} onClick={toggleStep}>
+            <div class={styles.sectionHeader} onClick={toggleSection}>
               <button
                 class={styles.stepCheck}
-                classList={{ [styles.checked]: stepChecked() }}
-                aria-label={stepChecked() ? 'Uncheck step' : 'Check step'}
+                classList={{ [styles.checked]: sectionChecked() }}
+                aria-label={sectionChecked() ? 'Uncheck section' : 'Check section'}
               >
-                {stepChecked() ? '✓' : ''}
+                {sectionChecked() ? '✓' : ''}
               </button>
-              <h2 class={styles.stepTitle}>{currentStep()?.title ?? ''}</h2>
+              <h2 class={styles.sectionTitle}>{currentSection()?.title ?? ''}</h2>
             </div>
 
-            <ul class={styles.substeps}>
-              <For each={currentStep()?.substeps ?? []}>
-                {(sub) => {
-                  const checked = () => checkedSubsteps().has(sub.id);
-                  const hasTimes = () => (sub.handsOnTime ?? 0) > 0 || (sub.waitTime ?? 0) > 0;
+            <ul class={styles.steps}>
+              <For each={currentSection()?.steps ?? []}>
+                {(step) => {
+                  const checked = () => checkedSteps().has(step.id);
+                  const hasTimes = () => (step.handsOnTime ?? 0) > 0 || (step.waitTime ?? 0) > 0;
                   return (
-                    <li class={styles.substep}>
+                    <li class={styles.step}>
                       <button
                         class={styles.stepCheck}
                         classList={{ [styles.checked]: checked() }}
-                        onClick={() => toggleSubstep(sub.id)}
+                        onClick={() => toggleStep(step.id)}
                         aria-label={checked() ? 'Uncheck' : 'Check'}
                       >
                         {checked() ? '✓' : ''}
                       </button>
                       <span
-                        class={styles.subInstruction}
+                        class={styles.stepInstruction}
                         classList={{ [styles.done]: checked() }}
                       >
                         <Show
-                          when={sub.segments}
-                          fallback={sub.instruction}
+                          when={step.segments}
+                          fallback={step.instruction}
                         >
-                           <For each={sub.segments}>
+                           <For each={step.segments}>
                             {(seg) => {
                               if (seg.type === 'text') return seg.text;
                               const ing = ingredientLookup().get(seg.ingredientId);
@@ -251,7 +251,7 @@ export default function CookingMode() {
                           </For>
                         </Show>
                         {hasTimes() && (
-                          <>{(sub.handsOnTime ?? 0) > 0 && <span class={styles.timeHands}>Hands-on: {sub.handsOnTime}m</span>}{(sub.waitTime ?? 0) > 0 && <span class={styles.timeWait}>Wait: {sub.waitTime}m</span>}</>
+                          <>{(step.handsOnTime ?? 0) > 0 && <span class={styles.timeHands}>Hands-on: {step.handsOnTime}m</span>}{(step.waitTime ?? 0) > 0 && <span class={styles.timeWait}>Wait: {step.waitTime}m</span>}</>
                         )}
                       </span>
                     </li>
@@ -261,9 +261,9 @@ export default function CookingMode() {
             </ul>
 
             <Show when={currentImages().length > 0}>
-              <div class={styles.stepImages}>
+              <div class={styles.sectionImages}>
                 {currentImages().map((url) => (
-                  <img class={styles.stepImage} src={url} alt="" loading="lazy" />
+                  <img class={styles.sectionImage} src={url} alt="" loading="lazy" />
                 ))}
               </div>
             </Show>
@@ -274,30 +274,30 @@ export default function CookingMode() {
           <div class={styles.navBar}>
             <button
               class={styles.navBtn}
-              classList={{ [styles.disabled]: isFirstStep() }}
+              classList={{ [styles.disabled]: isFirstSection() }}
               onClick={prev}
-              disabled={isFirstStep()}
+              disabled={isFirstSection()}
             >
               Previous
             </button>
             <div class={styles.dots}>
-              <For each={steps()}>
+              <For each={sections()}>
                 {(_, i) => (
                   <button
                     class={styles.dot}
                     classList={{ [styles.active]: i() === currentIdx() }}
                     onClick={() => goTo(i())}
-                    aria-label={`Go to step ${i() + 1}`}
+                    aria-label={`Go to section ${i() + 1}`}
                   />
                 )}
               </For>
             </div>
             <button
               class={styles.navBtn}
-              classList={{ [styles.primary]: isLastStep() }}
+              classList={{ [styles.primary]: isLastSection() }}
               onClick={next}
             >
-              {isLastStep() ? 'Finish' : 'Next'}
+              {isLastSection() ? 'Finish' : 'Next'}
             </button>
           </div>
         </AiChat>

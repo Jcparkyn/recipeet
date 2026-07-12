@@ -2,7 +2,7 @@ export interface RecipeContent {
   title: string;
   originalServings: number;
   ingredients: Ingredient[];
-  steps: Step[];
+  sections: Section[];
 }
 
 export interface Recipe {
@@ -17,9 +17,9 @@ export interface RecipeProgress {
   recipeId: string;
   currentServings: number;
   checkedShoppingItems: string[];
-  checkedSubsteps: string[];
+  checkedSteps: string[];
   checkedIngredients: string[];
-  currentCookingStep: number;
+  currentCookingSection: number;
   ingredientUnitModes: Record<string, number>;
   chatMessages: ChatMessage[];
 }
@@ -40,16 +40,16 @@ export interface Ingredient {
   category?: string;
 }
 
-export interface Step {
+export interface Section {
   id: string;
   title: string;
   order: number;
-  substeps: SubStep[];
+  steps: Step[];
   notes?: string;
   images?: string[];
 }
 
-export interface SubStep {
+export interface Step {
   id: string;
   instruction: string;
   segments?: InstructionSegment[];

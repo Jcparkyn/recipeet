@@ -5,9 +5,9 @@ import type { Recipe, RecipeProgress } from './types';
 import { scaleQuantity, formatQuantity } from './scaling';
 
 export interface ChatTools {
-  setSubstep: (substepId: string, checked: boolean) => void;
-  completeStep: (stepIndex: number) => void;
-  goToStep: (stepIndex: number) => void;
+  setStep: (stepId: string, checked: boolean) => void;
+  completeSection: (sectionIndex: number) => void;
+  goToSection: (sectionIndex: number) => void;
   getProgress: () => RecipeProgress;
 }
 
@@ -16,14 +16,14 @@ function buildSystemPrompt(recipe: Recipe, currentServings: number): string {
     title: recipe.content.title,
     servings: currentServings,
     originalServings: recipe.content.originalServings,
-    steps: recipe.content.steps.map((s, i) => ({
+    sections: recipe.content.sections.map((s, i) => ({
       index: i,
       title: s.title,
-      substeps: s.substeps.map((sub) => ({
-        id: sub.id,
-        instruction: sub.instruction,
-        handsOnTime: sub.handsOnTime,
-        waitTime: sub.waitTime,
+      steps: s.steps.map((step) => ({
+        id: step.id,
+        instruction: step.instruction,
+        handsOnTime: step.handsOnTime,
+        waitTime: step.waitTime,
       })),
     })),
     ingredients: recipe.content.ingredients.map((i) => {
@@ -50,12 +50,12 @@ You have tools to update the user's progress. Use them proactively when the user
 Guidelines:
 - Answer in as few words as possible. The user is cooking and needs quick, actionable answers.
 - No filler words/phrases, follow ups, or suggestions for what's next unless asked.
-- When the user describes completing an action, use the update_substep tool to mark it done.
-- If the user asks "what's next", check their progress with get_progress and tell them what substep comes next.
+- When the user describes completing an action, use the update_step tool to mark it done.
+- If the user asks "what's next", check their progress with get_progress and tell them what step comes next.
 - Ingredient quantities in the recipe are already scaled — use them directly, do not recalculate.
 - Do not repeat the full recipe unless asked.
-- If the user seems confused or stuck, offer helpful guidance based on the recipe steps.
-- In cook mode, you can navigate between steps using go_to_step if needed.
+- If the user seems confused or stuck, offer helpful guidance based on the recipe sections.
+- In cook mode, you can navigate between sections using go_to_section if needed.
 - No formatting (bold, **, etc) - just plain text.
 `;
 }
@@ -70,27 +70,27 @@ export function createRecipeAgent(
 
   const systemTools = [
     tool({
-      name: 'update_substep',
-      description: 'Mark a substep as checked (done) or unchecked.',
+      name: 'update_step',
+      description: 'Mark a step as checked (done) or unchecked.',
       parameters: z.object({
-        substepId: z.string().describe('The ID of the substep to update'),
+        stepId: z.string().describe('The ID of the step to update'),
         checked: z.boolean().describe('True to mark as done, false to mark as not done'),
       }),
-      execute: async ({ substepId, checked }) => {
-        tools.setSubstep(substepId, checked);
-        return 'Substep updated.';
+      execute: async ({ stepId, checked }) => {
+        tools.setStep(stepId, checked);
+        return 'Step updated.';
       },
     }),
 
     tool({
-      name: 'complete_step',
-      description: 'Mark all substeps in a step as complete.',
+      name: 'complete_section',
+      description: 'Mark all steps in a section as complete.',
       parameters: z.object({
-        stepIndex: z.number().int().min(0).describe('Zero-based index of the step'),
+        sectionIndex: z.number().int().min(0).describe('Zero-based index of the section'),
       }),
-      execute: async ({ stepIndex }) => {
-        tools.completeStep(stepIndex);
-        return 'Step completed.';
+      execute: async ({ sectionIndex }) => {
+        tools.completeSection(sectionIndex);
+        return 'Section completed.';
       },
     }),
 
@@ -101,31 +101,31 @@ export function createRecipeAgent(
       execute: async () => {
         const p = tools.getProgress();
         return JSON.stringify({
-          currentStep: p.currentCookingStep,
-          totalSteps: recipe.content.steps.length,
+          currentSection: p.currentCookingSection,
+          totalSections: recipe.content.sections.length,
           currentServings: p.currentServings,
-          checkedSubsteps: p.checkedSubsteps,
+          checkedSteps: p.checkedSteps,
           checkedIngredients: p.checkedIngredients,
         });
       },
     }),
   ];
 
-  const goToStepTool = tool({
-    name: 'go_to_step',
-    description: 'Navigate to a specific step.',
+  const goToSectionTool = tool({
+    name: 'go_to_section',
+    description: 'Navigate to a specific section.',
     parameters: z.object({
-      stepIndex: z.number().int().min(0).describe('Zero-based index of the step'),
+      sectionIndex: z.number().int().min(0).describe('Zero-based index of the section'),
     }),
-    execute: async ({ stepIndex }) => {
-      tools.goToStep(stepIndex);
-      return `Navigated to step ${stepIndex}.`;
+    execute: async ({ sectionIndex }) => {
+      tools.goToSection(sectionIndex);
+      return `Navigated to section ${sectionIndex}.`;
     },
   });
 
   return new RealtimeAgent({
     name: 'Cooking Assistant',
     instructions,
-    tools: isCookMode ? [...systemTools, goToStepTool] : systemTools,
+    tools: isCookMode ? [...systemTools, goToSectionTool] : systemTools,
   });
 }

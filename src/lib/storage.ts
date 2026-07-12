@@ -58,10 +58,10 @@ export function addRecipe(recipe: Recipe) {
       recipeId: recipe.id,
       currentServings: recipe.content.originalServings,
       checkedShoppingItems: [],
-      checkedSubsteps: [],
+      checkedSteps: [],
       checkedIngredients: [],
       ingredientUnitModes: {},
-      currentCookingStep: 0,
+      currentCookingSection: 0,
       chatMessages: [],
     });
   }));

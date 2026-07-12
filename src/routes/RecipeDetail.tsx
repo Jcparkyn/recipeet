@@ -25,7 +25,7 @@ export default function RecipeDetail() {
   const recipeId = params.id ?? '';
   const [showDelete, setShowDelete] = createSignal(false);
   const [showReset, setShowReset] = createSignal(false);
-  const [stepPopoverId, setStepPopoverId] = createSignal<string | null>(null);
+  const [sectionPopoverId, setSectionPopoverId] = createSignal<string | null>(null);
 
   const maybeRecipe = recipes.find((x) => x.id === recipeId);
   if (!maybeRecipe) {
@@ -76,9 +76,9 @@ export default function RecipeDetail() {
     return (
       p.currentServings !== recipe.content.originalServings ||
       p.checkedShoppingItems.length > 0 ||
-      p.checkedSubsteps.length > 0 ||
+      p.checkedSteps.length > 0 ||
       p.checkedIngredients.length > 0 ||
-      p.currentCookingStep !== 0 ||
+      p.currentCookingSection !== 0 ||
       Object.keys(p.ingredientUnitModes).length > 0 ||
       p.chatMessages.length > 0
     );
@@ -287,38 +287,38 @@ export default function RecipeDetail() {
         </section>
 
         <section>
-          <h2 class={styles.sectionTitle}>Steps ({recipe.content.steps.length})</h2>
-          <ol class={styles.stepList}>
-            {recipe.content.steps.map((step) => {
-              const showPopover = () => stepPopoverId() === step.id;
+          <h2 class={styles.sectionTitle}>Sections ({recipe.content.sections.length})</h2>
+          <ol class={styles.sectionList}>
+            {recipe.content.sections.map((section) => {
+              const showPopover = () => sectionPopoverId() === section.id;
               return (
-                <li class={styles.step}>
-                  <span class={styles.stepTitle}>{step.title}</span>
-                  {step.notes && (
+                <li class={styles.section}>
+                  <span class={styles.sectionName}>{section.title}</span>
+                  {section.notes && (
                     <>
                       <button
-                        class={styles.stepInfoBtn}
-                        onClick={() => setStepPopoverId(showPopover() ? null : step.id)}
-                        aria-label="Step info"
+                        class={styles.sectionInfoBtn}
+                        onClick={() => setSectionPopoverId(showPopover() ? null : section.id)}
+                        aria-label="Section info"
                       >
                         ℹ
                       </button>
                       <Show when={showPopover()}>
                         <Portal>
-                          <div class={styles.popoverOverlay} onClick={() => setStepPopoverId(null)}>
-                            <div class={styles.stepPopover} onClick={(e) => e.stopPropagation()}>
-                              <p class={styles.stepPopoverText}>{step.notes}</p>
-                              <button class={styles.popoverClose} onClick={() => setStepPopoverId(null)}>&times;</button>
+                          <div class={styles.popoverOverlay} onClick={() => setSectionPopoverId(null)}>
+                            <div class={styles.sectionPopover} onClick={(e) => e.stopPropagation()}>
+                              <p class={styles.sectionPopoverText}>{section.notes}</p>
+                              <button class={styles.popoverClose} onClick={() => setSectionPopoverId(null)}>&times;</button>
                             </div>
                           </div>
                         </Portal>
                       </Show>
                     </>
                   )}
-                  {step.images && step.images.length > 0 && (
-                    <div class={styles.stepImages}>
-                      {step.images.map((url) => (
-                        <img class={styles.stepImage} src={url} alt="" loading="lazy" />
+                  {section.images && section.images.length > 0 && (
+                    <div class={styles.sectionImages}>
+                      {section.images.map((url) => (
+                        <img class={styles.sectionImage} src={url} alt="" loading="lazy" />
                       ))}
                     </div>
                   )}
@@ -367,9 +367,9 @@ export default function RecipeDetail() {
             updateProgress(recipe.id, (p) => {
               p.currentServings = recipe.content.originalServings;
               p.checkedShoppingItems = [];
-              p.checkedSubsteps = [];
+              p.checkedSteps = [];
               p.checkedIngredients = [];
-              p.currentCookingStep = 0;
+              p.currentCookingSection = 0;
               p.ingredientUnitModes = {};
               p.chatMessages = [];
             });

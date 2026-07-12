@@ -125,36 +125,36 @@ export default function AiChat(props: AiChatProps) {
         r,
         p,
         {
-          setSubstep(substepId, checked) {
+          setStep(stepId, checked) {
             const cp = getProgress(props.recipeId);
             if (!cp) return;
-            const current = new Set(cp.checkedSubsteps);
-            if (checked) current.add(substepId);
-            else current.delete(substepId);
-            updateProgress(props.recipeId, (pp) => { pp.checkedSubsteps = [...current]; });
+            const current = new Set(cp.checkedSteps);
+            if (checked) current.add(stepId);
+            else current.delete(stepId);
+            updateProgress(props.recipeId, (pp) => { pp.checkedSteps = [...current]; });
           },
-          completeStep(stepIndex) {
+          completeSection(sectionIndex) {
             const cr = recipes.find((r2) => r2.id === props.recipeId);
             if (!cr) return;
-            const step = cr.content.steps[stepIndex];
-            if (!step) return;
+            const section = cr.content.sections[sectionIndex];
+            if (!section) return;
             const cp = getProgress(props.recipeId);
             if (!cp) return;
-            const current = new Set(cp.checkedSubsteps);
-            for (const sub of step.substeps) current.add(sub.id);
-            updateProgress(props.recipeId, (pp) => { pp.checkedSubsteps = [...current]; });
+            const current = new Set(cp.checkedSteps);
+            for (const step of section.steps) current.add(step.id);
+            updateProgress(props.recipeId, (pp) => { pp.checkedSteps = [...current]; });
           },
-          goToStep(stepIndex) {
-            updateProgress(props.recipeId, (pp) => { pp.currentCookingStep = stepIndex; });
+          goToSection(sectionIndex) {
+            updateProgress(props.recipeId, (pp) => { pp.currentCookingSection = sectionIndex; });
           },
           getProgress() {
             const cp = getProgress(props.recipeId);
             return cp ?? {
               recipeId: props.recipeId,
               currentServings: 0,
-              currentCookingStep: 0,
+              currentCookingSection: 0,
               checkedShoppingItems: [],
-              checkedSubsteps: [],
+              checkedSteps: [],
               checkedIngredients: [],
               ingredientUnitModes: {},
               chatMessages: [],
