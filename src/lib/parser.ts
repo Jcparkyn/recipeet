@@ -43,6 +43,7 @@ Quantities:
 - Convert fractions to decimals (0.5 not 1/2).
 - Never use 0 as a quantity. If there's no quantity in the recipe, leave quantity null.
 - Do NOT convert units. Return units exactly as they appear in the source text. Use only these unit strings: ml, l, g, kg, oz, lb, cup, tbsp, tsp, floz, pint, quart, gallon. For items without a unit (e.g. eggs, cloves, pinches of salt), use an empty string "".
+- Always use Celsius for temperatures. If the source uses Fahrenheit, convert to Celsius. Ignore Fahrenheit values entirely.
 
 Return only valid JSON, no markdown fences, no extra text.`;
 
