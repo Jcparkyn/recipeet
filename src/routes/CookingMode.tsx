@@ -278,7 +278,7 @@ export default function CookingMode() {
               onClick={prev}
               disabled={isFirstSection()}
             >
-              Previous
+            ❮
             </button>
             <div class={styles.dots}>
               <For each={sections()}>
@@ -297,7 +297,7 @@ export default function CookingMode() {
               classList={{ [styles.primary]: isLastSection() }}
               onClick={next}
             >
-              {isLastSection() ? 'Finish' : 'Next'}
+              {isLastSection() ? '✓' : '❯'}
             </button>
           </div>
         </AiChat>

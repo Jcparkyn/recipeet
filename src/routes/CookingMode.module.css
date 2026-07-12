@@ -215,23 +215,22 @@
 }
 
 .navBtn {
-  padding: 8px 20px;
-  border: 1px solid #2d6a4f;
-  border-radius: 10px;
-  background: white;
+  padding: 0 12px;
+  border: none;
+  background: none;
   color: #2d6a4f;
-  font-size: 0.9rem;
+  font-size: 1.6rem;
   font-weight: 600;
   cursor: pointer;
+  line-height: 1;
 }
 
 .navBtn.primary {
-  background: #2d6a4f;
-  color: white;
+  color: #2d6a4f;
 }
 
 .navBtn.disabled {
-  opacity: 0.4;
+  opacity: 0.25;
   cursor: default;
 }
 

@@ -239,23 +239,20 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: 2px solid #ccc;
+  background: none;
+  border: none;
   border-radius: 12px;
   cursor: pointer;
   padding: 11px 14px;
   line-height: 1;
   flex-shrink: 0;
   color: #666;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .chatBtn:hover {
-  border-color: #999;
   color: #333;
 }
 
 .chatBtn.active {
-  background: #e8f5e9;
-  border-color: #2d6a4f;
+  opacity: 0.4;
 }
