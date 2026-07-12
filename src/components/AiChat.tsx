@@ -4,6 +4,7 @@ import type { RealtimeItem } from '@openai/agents/realtime';
 import { recipes, getProgress, updateProgress, settings } from '@/lib/storage';
 import { createRecipeAgent } from '@/lib/chat';
 import type { ChatMessage } from '@/lib/types';
+import chefHatSvg from '/chef-hat.svg';
 import styles from './AiChat.module.css';
 
 interface AiChatProps {
@@ -342,7 +343,7 @@ export default function AiChat(props: AiChatProps) {
           onClick={toggle}
           aria-label="AI Chat"
         >
-          <img src="/chef-hat.svg" width="35" height="35" alt="" />
+          <img src={chefHatSvg} width="35" height="35" alt="" />
         </button>
         {props.children}
       </div>
