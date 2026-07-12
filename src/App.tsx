@@ -20,7 +20,7 @@ export default function App() {
   return (
     <div class={styles.app}>
       <ErrorBoundary fallback={ErrorFallback}>
-        <Router>
+        <Router base={import.meta.env.BASE_URL}>
           <Route path="/" component={RecipeList} />
           <Route path="/import" component={ImportRecipe} />
           <Route path="/settings" component={Settings} />
