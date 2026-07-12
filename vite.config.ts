@@ -5,6 +5,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import path from 'node:path';
 
 export default defineConfig({
+  base: process.env.BASE_URL ?? '/',
   plugins: [
     basicSsl(),
     solid(),
