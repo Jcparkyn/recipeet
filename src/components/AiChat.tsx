@@ -3,7 +3,6 @@ import { RealtimeSession } from '@openai/agents/realtime';
 import type { RealtimeItem } from '@openai/agents/realtime';
 import { recipes, getProgress, updateProgress, settings } from '@/lib/storage';
 import { createRecipeAgent } from '@/lib/chat';
-import type { ChatMessage } from '@/lib/types';
 import chefHatSvg from '/chef-hat.svg';
 import styles from './AiChat.module.css';
 
@@ -35,20 +34,43 @@ function getMessageText(item: Record<string, unknown>): string | null {
   return null;
 }
 
-function extractChatMessages(history: RealtimeItem[]): ChatMessage[] {
-  const messages: ChatMessage[] = [];
-  for (const item of history) {
-    const text = getMessageText(item as unknown as Record<string, unknown>);
-    if (!text) continue;
-    const role = (item as Record<string, unknown>).role as string;
-    messages.push({
-      id: (item as Record<string, unknown>).itemId as string,
-      role: role === 'user' ? 'user' : 'assistant',
-      content: text,
-      timestamp: Date.now(),
-    });
-  }
-  return messages;
+// The server's history_updated events include `audio: null` in input_audio /
+// output_audio content entries (no audio bytes are returned in history). When we
+// restore saved messages via session.updateHistory(), the library sends
+// conversation.item.create events to the server, which rejects `audio: null`.
+// Convert these entries to their text equivalents using the transcript instead.
+function sanitizeItemsForRestore(items: RealtimeItem[]): RealtimeItem[] {
+  return items.map((item) => {
+    const raw = item as unknown as Record<string, unknown>;
+    if (raw.type !== 'message') return item;
+    const role = raw.role as string;
+    if (role !== 'user' && role !== 'assistant') return item;
+    const content = raw.content as Record<string, unknown>[] | undefined;
+    if (!content) return item;
+    let changed = false;
+    const cleaned = content.map((part) => {
+      const partType = part.type as string;
+      const isInputAudio = partType === 'input_audio';
+      const isOutputAudio = partType === 'output_audio';
+      if ((isInputAudio || isOutputAudio) && (part.audio === null || part.audio === undefined)) {
+        changed = true;
+        const transcript = part.transcript;
+        if (typeof transcript === 'string' && transcript.trim()) {
+          return { type: isInputAudio ? 'input_text' : 'output_text', text: transcript };
+        }
+        return null;
+      }
+      return part;
+    }).filter((p): p is Record<string, unknown> => p !== null);
+    if (!changed) return item;
+    return { ...raw, content: cleaned } as unknown as RealtimeItem;
+  });
+}
+
+interface DisplayMessage {
+  id: string;
+  role: string;
+  text: string;
 }
 
 export default function AiChat(props: AiChatProps) {
@@ -56,7 +78,7 @@ export default function AiChat(props: AiChatProps) {
   const [input, setInput] = createSignal('');
   const [isConnecting, setIsConnecting] = createSignal(false);
   const [isConnected, setIsConnected] = createSignal(false);
-  const [isMuted, setIsMuted] = createSignal(false);
+  const [isListening, setIsListening] = createSignal(false);
   const [isSpeaking, setIsSpeaking] = createSignal(false);
   const [errorMsg, setErrorMsg] = createSignal('');
   let messagesEnd!: HTMLDivElement;
@@ -66,6 +88,21 @@ export default function AiChat(props: AiChatProps) {
   const recipe = createMemo(() => recipes.find((r) => r.id === props.recipeId));
   const progress = createMemo(() => getProgress(props.recipeId));
   const messages = createMemo(() => progress()?.chatMessages ?? []);
+
+  const displayMessages = createMemo(() => {
+    const items = messages();
+    const result: DisplayMessage[] = [];
+    for (const item of items) {
+      const text = getMessageText(item as unknown as Record<string, unknown>);
+      if (!text) continue;
+      result.push({
+        id: (item as unknown as Record<string, unknown>).itemId as string,
+        role: (item as unknown as Record<string, unknown>).role as string,
+        text,
+      });
+    }
+    return result;
+  });
 
   onMount(() => {
     void navigator.mediaDevices?.getUserMedia;
@@ -120,6 +157,7 @@ export default function AiChat(props: AiChatProps) {
 
     setIsConnecting(true);
     setErrorMsg('');
+    console.log('[ai-chat] connecting...');
 
     try {
       const agent = createRecipeAgent(
@@ -177,27 +215,48 @@ export default function AiChat(props: AiChatProps) {
       });
 
       session.on('history_updated', (history: RealtimeItem[]) => {
-        const chatMessages = extractChatMessages(history);
         updateProgress(props.recipeId, (pp) => {
-          pp.chatMessages = chatMessages;
+          pp.chatMessages = history;
         });
         queueMicrotask(scrollToBottom);
       });
 
-      session.on('audio_start', () => setIsSpeaking(true));
-      session.on('audio_stopped', () => setIsSpeaking(false));
+      session.on('audio_start', () => {
+        console.log('[ai-chat] speaking started');
+        setIsSpeaking(true);
+      });
+      session.on('audio_stopped', () => {
+        console.log('[ai-chat] speaking stopped');
+        setIsSpeaking(false);
+      });
 
       session.on('error', (err: { type: string; error: unknown }) => {
+        console.error("Error from RealtimeSession", err);
         const msg = err.error instanceof Error ? err.error.message : String(err.error);
         setErrorMsg(msg);
       });
 
+      session.on('transport_event', (event: { type: string }) => {
+        if (event.type === 'input_audio_buffer.speech_started') {
+          console.log('[ai-chat] speech detected');
+        } else if (event.type === 'input_audio_buffer.speech_stopped') {
+          console.log('[ai-chat] speech ended');
+        }
+      });
+
       const token = await getEphemeralToken(s.apiKey);
+      const savedMessages = p.chatMessages;
       await session.connect({ apiKey: token });
 
       setIsConnected(true);
-      setIsMuted(false);
+      console.log('[ai-chat] connected');
+      session.mute(!isListening());
+
+      if (savedMessages.length > 0) {
+        session.updateHistory(sanitizeItemsForRestore(savedMessages));
+      }
     } catch (err: unknown) {
+      console.log("Error connecting session", err);
       const msg = err instanceof Error ? err.message : 'Connection failed';
       setErrorMsg(msg);
       session?.close();
@@ -208,30 +267,39 @@ export default function AiChat(props: AiChatProps) {
   }
 
   function disconnectSession() {
+    console.log('[ai-chat] disconnected');
     if (session) {
       session.close();
       session = null;
     }
     setIsConnected(false);
     setIsConnecting(false);
-    setIsMuted(false);
     setIsSpeaking(false);
   }
 
   createEffect(() => {
     const open = isOpen();
-    if (open && !isConnected() && !isConnecting()) {
+    const listening = isListening();
+    if ((open || listening) && !isConnected() && !isConnecting()) {
       void connectSession();
-    } else if (!open && isConnected()) {
+    } else if (!open && !listening && isConnected()) {
       disconnectSession();
     }
   });
 
-  function toggleMute() {
-    if (!session) return;
-    const newMuted = !isMuted();
-    session.mute(newMuted);
-    setIsMuted(newMuted);
+  createEffect(() => {
+    const connected = isConnected();
+    const muted = !isListening();
+    if (session && connected) {
+      session.mute(muted);
+    }
+  });
+
+  function toggleVoice() {
+    if (isConnecting()) return;
+    const next = !isListening();
+    setIsListening(next);
+    console.log(`[ai-chat] listening ${next ? 'started' : 'stopped'}`);
   }
 
   function send(e: Event) {
@@ -275,7 +343,7 @@ export default function AiChat(props: AiChatProps) {
             </button>
           </div>
           <div class={styles.messages}>
-            <For each={messages()}>
+            <For each={displayMessages()}>
               {(msg) => (
                 <div
                   class={styles.bubble}
@@ -284,7 +352,7 @@ export default function AiChat(props: AiChatProps) {
                     [styles.assistant]: msg.role === 'assistant',
                   }}
                 >
-                  {msg.content}
+                  {msg.text}
                 </div>
               )}
             </For>
@@ -303,20 +371,6 @@ export default function AiChat(props: AiChatProps) {
             <div ref={(el) => { messagesEnd = el; }} />
           </div>
           <form class={styles.inputArea} onSubmit={send}>
-            <button
-              type="button"
-              class={styles.micBtn}
-              classList={{
-                [styles.listening]: isConnected() && !isMuted(),
-                [styles.muted]: isMuted(),
-              }}
-              onClick={toggleMute}
-              disabled={!isConnected() || isConnecting()}
-              aria-label={isMuted() ? 'Unmute microphone' : 'Mute microphone'}
-              title={isMuted() ? 'Unmute microphone' : 'Mute microphone'}
-            >
-              {isMuted() ? '🔇' : '🎤'}
-            </button>
             <input
               ref={(el) => { inputRef = el; }}
               class={styles.input}
@@ -345,6 +399,13 @@ export default function AiChat(props: AiChatProps) {
         >
           <img src={chefHatSvg} width="35" height="35" alt="" />
         </button>
+        <button
+          class={styles.voiceBtn}
+          classList={{ [styles.listening]: isListening() }}
+          onClick={toggleVoice}
+          disabled={isConnecting()}
+          aria-label={isListening() ? 'Stop listening' : 'Start voice input'}
+        />
         {props.children}
       </div>
     </>

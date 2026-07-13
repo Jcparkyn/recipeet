@@ -140,39 +140,28 @@
   flex-shrink: 0;
 }
 
-.micBtn {
+.voiceBtn {
   background: none;
-  border: 1px solid #ddd;
+  border: 2px solid #c0392b;
   border-radius: 50%;
   width: 36px;
   height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  font-size: 1rem;
-  line-height: 1;
   padding: 0;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
 }
 
-.micBtn:hover {
-  border-color: #999;
+.voiceBtn:hover {
+  border-color: #a93226;
 }
 
-.micBtn.listening {
+.voiceBtn.listening {
   background: #c0392b;
-  border-color: #c0392b;
   animation: pulse 1.5s infinite;
 }
 
-.micBtn.muted {
-  background: #eee;
-  border-color: #ddd;
-}
-
-.micBtn:disabled {
+.voiceBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }

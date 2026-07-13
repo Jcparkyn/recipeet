@@ -13,6 +13,8 @@ export interface Recipe {
   updatedAt: number;
 }
 
+import type { RealtimeItem } from '@openai/agents/realtime';
+
 export interface RecipeProgress {
   recipeId: string;
   currentServings: number;
@@ -21,14 +23,7 @@ export interface RecipeProgress {
   checkedIngredients: string[];
   currentCookingSection: number;
   ingredientUnitModes: Record<string, number>;
-  chatMessages: ChatMessage[];
-}
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: number;
+  chatMessages: RealtimeItem[];
 }
 
 export interface Ingredient {
@@ -85,5 +80,5 @@ export interface LLMSettings {
 export const DEFAULT_LLM_SETTINGS: LLMSettings = {
   apiKey: '',
   baseUrl: 'https://api.openai.com/v1',
-  model: 'gpt-4o',
+  model: 'gpt-5.6-luna',
 };
