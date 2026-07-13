@@ -21,6 +21,7 @@ Structure:
 - Prep work (chopping, measuring, marinating) should still come before cooking sections that depend on them.
 - Time-sensitive prep (e.g. "cut meat before it goes in a hot pan") gets its own section BEFORE the cooking section that needs it.
 - Split into separate steps aggressively. A step may contain multiple ingredient actions (add, stir, mix, measure) but at most ONE timed cooking/waiting section. Whenever the source describes a cooking action (cook, simmer, fry, boil, bake, roast, sauté, rest, etc.) followed by another cooking action with different timing, split them into different steps. Example: "add [[ing:0]], cook for 2 min, add [[ing:1]], cook for 4 min" must be TWO steps — the first ending at "2 min", the second starting with "add [[ing:1]]". Conversely, "fry [[ing:0]] for 3 min, then set aside" is a single step because there is only one cooking section.
+- Give each step a 1-2 word "headline" that captures the essence of the step (e.g. "Prep veg", "Sauté", "Simmer", "Season", "Rest meat"). This is a short label, not a sentence. Omit for steps where the instruction alone is already obvious.
 - As a rough guideline, sections should each have around 2-4 steps. More steps is okay if they're very short, and one step is okay if it's unrelated to nearby sections.
 
 Ingredients:
@@ -57,6 +58,7 @@ const ingredientSchema = z.object({
 });
 
 const stepSchema = z.object({
+  headline: z.string().max(15).optional(),
   instruction: z.string().min(1),
   handsOnTime: z.number().nonnegative().optional(),
   waitTime: z.number().nonnegative().optional(),
@@ -131,6 +133,7 @@ function validateAndTransform(raw: RawRecipe): ParseResult {
 
       return {
         id: String(nextId++),
+        headline: step.headline || undefined,
         instruction,
         segments,
         handsOnTime: step.handsOnTime && step.handsOnTime > 0 ? step.handsOnTime : undefined,

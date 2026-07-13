@@ -46,6 +46,7 @@ export interface Section {
 
 export interface Step {
   id: string;
+  headline?: string;
   instruction: string;
   segments?: InstructionSegment[];
   handsOnTime?: number;

@@ -132,6 +132,10 @@
   line-height: 1.5;
 }
 
+.stepHeadline {
+  font-weight: 700;
+}
+
 .ingredientLink {
   color: #2d6a4f;
   font-weight: 600;
@@ -174,6 +178,12 @@
 .stepInstruction.done {
   text-decoration: line-through;
   color: #aaa;
+}
+
+.stepInstruction.done .stepHeadline {
+  text-decoration: line-through;
+  color: #999;
+  font-weight: 600;
 }
 
 .timeHands {
