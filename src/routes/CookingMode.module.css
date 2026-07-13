@@ -132,7 +132,7 @@
   line-height: 1.5;
 }
 
-.stepHeadline {
+.stepLabel {
   font-weight: 700;
 }
 
@@ -180,7 +180,7 @@
   color: #aaa;
 }
 
-.stepInstruction.done .stepHeadline {
+.stepInstruction.done .stepLabel {
   text-decoration: line-through;
   color: #999;
   font-weight: 600;

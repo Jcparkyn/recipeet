@@ -202,8 +202,8 @@ export default function CookingMode() {
                         class={styles.stepInstruction}
                         classList={{ [styles.done]: checked() }}
                       >
-                        <Show when={step.headline}>
-                          <strong class={styles.stepHeadline}>{step.headline}: </strong>
+                        <Show when={step.label}>
+                          <strong class={styles.stepLabel}>{step.label}: </strong>
                         </Show>
                         <Show
                           when={step.segments}

@@ -21,7 +21,7 @@ function buildSystemPrompt(recipe: Recipe, currentServings: number): string {
       title: s.title,
       steps: s.steps.map((step) => ({
         id: step.id,
-        headline: step.headline,
+        label: step.label,
         instruction: step.instruction,
         handsOnTime: step.handsOnTime,
         waitTime: step.waitTime,
