@@ -30,6 +30,7 @@ Ingredients:
 - Extract preparation notes, substitutions, or special qualities from ingredient text (e.g. "cold, cubed", "peeled and diced", "or margarine"). Include in the "notes" field of each ingredient. Leave empty if none.
 - If an ingredient is used in multiple sections/steps, make multiple entries for that ingredient with the same name.
 - If the recipe contains "either/or" ingredients (e.g. chicken OR pork, parsley OR coriander), they must be put in a separate category heading, e.g. "Protein (choose 1)".
+- If an ingredient has already been cooked or combined in some way in a previous step (e.g. cooked chicken thighs, or a sauce that was already mixed), just refer to it by name rather than an ingredient reference. E.g "slice the cooked chicken thighs into 1cm strips".
 
 Timing:
 - Estimate the time each step takes. Include "handsOnTime" (active work in minutes, e.g. chopping, stirring) and "waitTime" (passive time in minutes, e.g. baking, simmering, resting). Both are numbers in minutes, omit if zero. Examples: dicing chicken is {"handsOnTime": 3}; frying is {"handsOnTime": 2, "waitTime": 8}.
