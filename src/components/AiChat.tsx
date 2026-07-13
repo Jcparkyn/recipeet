@@ -274,8 +274,6 @@ export default function AiChat(props: AiChatProps) {
     const listening = isListening();
     if ((open || listening) && !isConnected() && !isConnecting()) {
       void connectSession();
-    } else if (!open && !listening && isConnected()) {
-      disconnectSession();
     }
   });
 
