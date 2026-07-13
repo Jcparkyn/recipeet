@@ -79,7 +79,7 @@ export default function AiChat(props: AiChatProps) {
   const [isConnecting, setIsConnecting] = createSignal(false);
   const [isConnected, setIsConnected] = createSignal(false);
   const [isListening, setIsListening] = createSignal(false);
-  const [isSpeaking, setIsSpeaking] = createSignal(false);
+  const [isUserSpeaking, setIsUserSpeaking] = createSignal(false);
   const [errorMsg, setErrorMsg] = createSignal('');
   let messagesEnd!: HTMLDivElement;
   let inputRef!: HTMLInputElement;
@@ -221,15 +221,6 @@ export default function AiChat(props: AiChatProps) {
         queueMicrotask(scrollToBottom);
       });
 
-      session.on('audio_start', () => {
-        console.log('[ai-chat] speaking started');
-        setIsSpeaking(true);
-      });
-      session.on('audio_stopped', () => {
-        console.log('[ai-chat] speaking stopped');
-        setIsSpeaking(false);
-      });
-
       session.on('error', (err: { type: string; error: unknown }) => {
         console.error("Error from RealtimeSession", err);
         const msg = err.error instanceof Error ? err.error.message : String(err.error);
@@ -239,8 +230,10 @@ export default function AiChat(props: AiChatProps) {
       session.on('transport_event', (event: { type: string }) => {
         if (event.type === 'input_audio_buffer.speech_started') {
           console.log('[ai-chat] speech detected');
+          setIsUserSpeaking(true);
         } else if (event.type === 'input_audio_buffer.speech_stopped') {
           console.log('[ai-chat] speech ended');
+          setIsUserSpeaking(false);
         }
       });
 
@@ -274,7 +267,6 @@ export default function AiChat(props: AiChatProps) {
     }
     setIsConnected(false);
     setIsConnecting(false);
-    setIsSpeaking(false);
   }
 
   createEffect(() => {
@@ -356,8 +348,8 @@ export default function AiChat(props: AiChatProps) {
                 </div>
               )}
             </For>
-            <Show when={isSpeaking()}>
-              <div class={styles.bubble} classList={{ [styles.assistant]: true }}>
+            <Show when={isUserSpeaking()}>
+              <div class={styles.bubble} classList={{ [styles.user]: true }}>
                 <span class={styles.typing}>
                   <span class={styles.dot} />
                   <span class={styles.dot} />
@@ -401,11 +393,19 @@ export default function AiChat(props: AiChatProps) {
         </button>
         <button
           class={styles.voiceBtn}
-          classList={{ [styles.listening]: isListening() }}
+          classList={{ [styles.listening]: isListening(), [styles.speaking]: isUserSpeaking() }}
           onClick={toggleVoice}
           disabled={isConnecting()}
           aria-label={isListening() ? 'Stop listening' : 'Start voice input'}
-        />
+        >
+          <Show when={isUserSpeaking()}>
+            <span class={styles.voiceBtnDots}>
+              <span class={styles.voiceBtnDot} />
+              <span class={styles.voiceBtnDot} />
+              <span class={styles.voiceBtnDot} />
+            </span>
+          </Show>
+        </button>
         {props.children}
       </div>
     </>
