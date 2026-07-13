@@ -1,6 +1,5 @@
 .app {
   min-height: 100dvh;
-  max-width: 430px;
   margin: 0 auto;
   --font-heading: 'Lora Variable', Georgia, 'Times New Roman', serif;
   background: var(--bg, #fdfaf3);

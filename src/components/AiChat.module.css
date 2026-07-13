@@ -148,7 +148,7 @@
   height: 36px;
   cursor: pointer;
   flex-shrink: 0;
-  padding: 0;
+  margin: 0 12px 0 0;
   transition: background 0.15s, border-color 0.15s, opacity 0.15s;
   display: flex;
   align-items: center;
@@ -264,8 +264,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px;
+  padding: 12px;
   border-top: 1px solid #e0e0e0;
+  min-height: 50px;
 }
 
 .chatBtn {
@@ -276,7 +277,7 @@
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  padding: 11px 14px;
+  padding: 0px 0px;
   line-height: 1;
   flex-shrink: 0;
   color: #666;
