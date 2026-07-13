@@ -71,6 +71,8 @@ export default function RecipeDetail() {
   const p = getProgress(recipeId);
   const servings = () => p?.currentServings ?? recipe.content.originalServings;
 
+  const equipment = () => recipe.content.equipment;
+
   const hasProgress = createMemo(() => {
     if (!p) return false;
     return (
@@ -285,6 +287,33 @@ export default function RecipeDetail() {
             );
           })}
         </section>
+
+        <Show when={equipment()}>
+          {(eq) => {
+            const items = eq();
+            if (!items) return null;
+            return (
+              <section>
+                <h2 class={styles.sectionTitle}>
+                  Equipment ({items.length})
+                </h2>
+                <ul class={styles.equipmentList}>
+                  {items.map((item) => (
+                    <li class={styles.equipmentItem}>
+                      <span class={styles.equipmentName}>
+                        {item.name}
+                        {item.quantity && item.quantity > 1 && (
+                          <span class={styles.equipmentSize}> x{item.quantity}</span>
+                        )}
+                        {item.notes && <span class={styles.equipmentNotes}> — {item.notes}</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          }}
+        </Show>
 
         <section>
           <h2 class={styles.sectionTitle}>Sections ({recipe.content.sections.length})</h2>

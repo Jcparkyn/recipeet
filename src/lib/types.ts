@@ -3,6 +3,13 @@ export interface RecipeContent {
   originalServings: number;
   ingredients: Ingredient[];
   sections: Section[];
+  equipment?: Equipment[];
+}
+
+export interface Equipment {
+  name: string;
+  quantity?: number;
+  notes?: string;
 }
 
 export interface Recipe {

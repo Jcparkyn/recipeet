@@ -1,7 +1,7 @@
 import { Agent, run, OpenAIProvider } from '@openai/agents';
 import OpenAI from 'openai';
 import { z } from 'zod';
-import type { RecipeContent, LLMSettings, InstructionSegment, Ingredient } from './types';
+import type { RecipeContent, LLMSettings, InstructionSegment, Ingredient, Equipment } from './types';
 
 export interface ParseResult {
   content: RecipeContent;
@@ -47,6 +47,14 @@ Quantities:
 - Do NOT convert units. Return units exactly as they appear in the source text. Use only these unit strings: ml, l, g, kg, oz, lb, cup, tbsp, tsp, floz, pint, quart, gallon. For items without a unit (e.g. eggs, cloves, pinches of salt), use an empty string "".
 - Always use Celsius for temperatures. If the source uses Fahrenheit, convert to Celsius. Ignore Fahrenheit values entirely.
 
+Equipment:
+- Infer all equipment (vessels, cookware, appliances) that will be needed from reading the steps. Do NOT include hand tools (knives, spoons, spatulas, tongs, whisks, peelers, graters, scissors).
+- Include the size in the name where relevant (e.g. "Large prep bowl", "Medium saucepan", "Small mixing bowl"). For bowls, estimate size based on ingredient volumes: small (~1 cup/250ml), medium (~4 cups/1L), large (~10 cups/2.5L+).
+- If more than one of the same item is needed, set the "quantity" field (e.g. 2 for two baking sheets).
+- Include appliances (e.g. "Blender", "Food processor", "Stand mixer"). Omit the oven, stove, or microwave — those are implied.
+- Include colanders, sieves, strainers, rolling pins.
+- Use the "notes" field only if there's something special about the equipment (e.g. "lined with baking paper", "lightly greased").
+
 Return only valid JSON, no markdown fences, no extra text.`;
 
 const ingredientSchema = z.object({
@@ -72,11 +80,18 @@ const sectionSchema = z.object({
   steps: z.array(stepSchema).min(1),
 });
 
+const equipmentSchema = z.object({
+  name: z.string().min(1),
+  quantity: z.number().int().positive().optional(),
+  notes: z.string().optional(),
+});
+
 const recipeOutputSchema = z.object({
   title: z.string().min(1),
   originalServings: z.coerce.number().positive().optional(),
   ingredients: z.array(ingredientSchema).min(1),
   sections: z.array(sectionSchema).min(1),
+  equipment: z.array(equipmentSchema).optional(),
 });
 
 type RawRecipe = z.infer<typeof recipeOutputSchema>;
@@ -142,10 +157,16 @@ function validateAndTransform(raw: RawRecipe): ParseResult {
     }),
   }));
 
+  const equipment: Equipment[] = (raw.equipment || []).map((eq) => ({
+    name: eq.name,
+    quantity: eq.quantity && eq.quantity > 1 ? eq.quantity : undefined,
+    notes: eq.notes || undefined,
+  }));
+
   sections.sort((a, b) => a.order - b.order);
 
   return {
-    content: { title: raw.title, originalServings: raw.originalServings ?? 1, ingredients, sections },
+    content: { title: raw.title, originalServings: raw.originalServings ?? 1, ingredients, sections, equipment: equipment.length > 0 ? equipment : undefined },
     warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
