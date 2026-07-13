@@ -207,6 +207,12 @@ export default function AiChat(props: AiChatProps) {
         model: REALTIME_MODEL,
         config: {
           audio: {
+            input: {
+              turnDetection: {
+                type: 'semantic_vad',
+                eagerness: 'high',
+              },
+            },
             output: {
               speed: 1.5,
             },
