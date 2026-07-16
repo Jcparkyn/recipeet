@@ -1,5 +1,4 @@
 import { createMemo, createSignal, Show } from 'solid-js';
-import { Portal } from 'solid-js/web';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, removeRecipe, updateRecipe, updateProgress } from '@/lib/storage';
 import type { Ingredient } from '@/lib/types';
@@ -25,7 +24,6 @@ export default function RecipeDetail() {
   const recipeId = params.id ?? '';
   const [showDelete, setShowDelete] = createSignal(false);
   const [showReset, setShowReset] = createSignal(false);
-  const [sectionPopoverId, setSectionPopoverId] = createSignal<string | null>(null);
   const [expandedNotes, setExpandedNotes] = createSignal<Set<string>>(new Set());
 
   function toggleNotes(id: string) {
@@ -345,47 +343,6 @@ export default function RecipeDetail() {
           }}
         </Show>
 
-        <section>
-          <h2 class={styles.sectionTitle}>Sections ({recipe.content.sections.length})</h2>
-          <ol class={styles.sectionList}>
-            {recipe.content.sections.map((section) => {
-              const showPopover = () => sectionPopoverId() === section.id;
-              return (
-                <li class={styles.section}>
-                  <span class={styles.sectionName}>{section.title}</span>
-                  {section.notes && (
-                    <>
-                      <button
-                        class={styles.sectionInfoBtn}
-                        onClick={() => setSectionPopoverId(showPopover() ? null : section.id)}
-                        aria-label="Section info"
-                      >
-                        ℹ
-                      </button>
-                      <Show when={showPopover()}>
-                        <Portal>
-                          <div class={styles.popoverOverlay} onClick={() => setSectionPopoverId(null)}>
-                            <div class={styles.sectionPopover} onClick={(e) => e.stopPropagation()}>
-                              <p class={styles.sectionPopoverText}>{section.notes}</p>
-                              <button class={styles.popoverClose} onClick={() => setSectionPopoverId(null)}>&times;</button>
-                            </div>
-                          </div>
-                        </Portal>
-                      </Show>
-                    </>
-                  )}
-                  {section.images && section.images.length > 0 && (
-                    <div class={styles.sectionImages}>
-                      {section.images.map((url) => (
-                        <img class={styles.sectionImage} src={url} alt="" loading="lazy" />
-                      ))}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </section>
       </main>
 
       <AiChat recipeId={recipe.id} isCookMode={false}>
