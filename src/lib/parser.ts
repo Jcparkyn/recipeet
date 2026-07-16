@@ -26,6 +26,7 @@ Structure:
 
 Ingredients:
 - Every step instruction must use [[ing:N]] markers where an ingredient is used (N = zero-based index in ingredients[]). Do NOT write the ingredient name or quantity in the instruction text — the [[ing:N]] marker replaces it entirely. Example: "Dice [[ing:0]] into small cubes" not "Dice 2 onions into small cubes".
+- Always write ingredient names in lowercase (e.g. "chicken breast", "thai basil").
 - Categorize each ingredient using standard AU grocery store aisle names, title-cased. Examples (not exhaustive): Produce, Dairy, Meat, Pantry, Spices, Bakery, Frozen. You don't have to follow the categories used in the original recipe, which might be a different system.
 - Non-urgent measuring (e.g. "add 1 tsp paprika to sauce") stays inline in the cooking step.
 - Extract preparation notes, substitutions, or special qualities from ingredient text (e.g. "cold, cubed", "peeled and diced", "or margarine"). Include in the "notes" field of each ingredient. Leave empty if none.
