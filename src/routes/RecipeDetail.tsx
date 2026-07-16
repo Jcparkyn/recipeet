@@ -26,6 +26,19 @@ export default function RecipeDetail() {
   const [showDelete, setShowDelete] = createSignal(false);
   const [showReset, setShowReset] = createSignal(false);
   const [sectionPopoverId, setSectionPopoverId] = createSignal<string | null>(null);
+  const [expandedNotes, setExpandedNotes] = createSignal<Set<string>>(new Set());
+
+  function toggleNotes(id: string) {
+    setExpandedNotes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   const maybeRecipe = recipes.find((x) => x.id === recipeId);
   if (!maybeRecipe) {
@@ -257,6 +270,23 @@ export default function RecipeDetail() {
                           {item.name}
                           {item.notes && item.notes.length < 50 && (
                             <span class={styles.ingNotes}>{item.notes}</span>
+                          )}
+                          {item.notes && item.notes.length >= 50 && (
+                            <span
+                              class={
+                                expandedNotes().has(firstId)
+                                  ? styles.ingNotes
+                                  : styles.ingNotesToggle
+                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleNotes(firstId);
+                              }}
+                            >
+                              {expandedNotes().has(firstId)
+                                ? item.notes
+                                : 'notes'}
+                            </span>
                           )}
                         </button>
                         <Show when={hasQty}>

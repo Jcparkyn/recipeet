@@ -213,6 +213,15 @@
   margin-left: 6px;
 }
 
+.ingNotesToggle {
+  font-size: 0.75rem;
+  color: #999;
+  font-weight: 400;
+  margin-left: 6px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .ingQty {
   color: #2d6a4f;
   font-weight: 600;
