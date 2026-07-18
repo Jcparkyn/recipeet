@@ -160,6 +160,10 @@
   cursor: pointer;
 }
 
+.unitToggle.hasToggle .unitText {
+  border-bottom: 1px dashed #999;
+}
+
 .unitToggle.hasToggle:active {
   opacity: 0.7;
 }

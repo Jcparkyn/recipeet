@@ -237,6 +237,10 @@
   cursor: pointer;
 }
 
+.ingQty.hasToggle .unitText {
+  border-bottom: 1px dashed #999;
+}
+
 .ingQty.hasToggle:active {
   opacity: 0.7;
 }

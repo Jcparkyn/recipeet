@@ -303,8 +303,10 @@ export default function RecipeDetail() {
                             aria-label="Toggle unit"
                             disabled={!hasToggle()}
                           >
-                            {formatQuantity(toggled().display.quantity)}{' '}
-                            {toggled().display.unit}
+                            <span class={styles.unitText}>
+                              {formatQuantity(toggled().display.quantity)}{' '}
+                              {toggled().display.unit}
+                            </span>
                           </button>
                         </Show>
                       </li>
