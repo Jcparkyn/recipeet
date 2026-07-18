@@ -295,12 +295,17 @@
   line-height: 1;
   flex-shrink: 0;
   color: #666;
+  opacity: 0.6;
 }
 
 .chatBtn:hover {
   color: #333;
 }
 
-.chatBtn.active {
-  opacity: 0.4;
+.chatBtn img {
+  transition: transform 0.2s ease;
+}
+
+.chatBtn.active img {
+  transform: rotate(180deg);
 }
