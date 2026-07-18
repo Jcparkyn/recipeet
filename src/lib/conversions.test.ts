@@ -40,14 +40,14 @@ describe('getAvailableModes', () => {
       const modes = getAvailableModes(qty(100, 'ml'));
       expect(modes).toHaveLength(2);
       expect(modes[0]).toEqual({ quantity: 100, unit: 'ml' });
-      expect(modes[1]).toEqual({ quantity: 100 / 240, unit: 'cup' });
+      expect(modes[1]).toEqual({ quantity: 100 / 250, unit: 'cup' });
     });
 
     it('1000ml (>80) → volume first, household (cup) last', () => {
       const modes = getAvailableModes(qty(1000, 'ml'));
       expect(modes).toHaveLength(2);
       expect(modes[0]).toEqual({ quantity: 1, unit: 'l' });
-      expect(modes[1]).toEqual({ quantity: 1000 / 240, unit: 'cup' });
+      expect(modes[1]).toEqual({ quantity: 1000 / 250, unit: 'cup' });
     });
   });
 
@@ -91,7 +91,7 @@ describe('getAvailableModes', () => {
       expect(modes).toHaveLength(3);
       expect(modes[0]).toEqual({ quantity: 300, unit: 'ml' });
       expect(modes[1]).toEqual({ quantity: 159, unit: 'g' });
-      expect(modes[2]).toEqual({ quantity: 1.25, unit: 'cup' });
+      expect(modes[2]).toEqual({ quantity: 1.2, unit: 'cup' });
     });
 
     it('500g → weight, volume, household (no reorder, weight-first ingredient)', () => {
@@ -100,7 +100,7 @@ describe('getAvailableModes', () => {
       expect(modes[0]).toEqual({ quantity: 500, unit: 'g' });
       expect(modes[1].unit).toBe('ml');
       expect(modes[1].quantity).toBeCloseTo(500 / flourDensity, 2);
-      expect(modes[2]).toEqual({ quantity: (500 / flourDensity) / 240, unit: 'cup' });
+      expect(modes[2]).toEqual({ quantity: (500 / flourDensity) / 250, unit: 'cup' });
     });
   });
 
