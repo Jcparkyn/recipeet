@@ -83,10 +83,12 @@ export interface LLMSettings {
   apiKey: string;
   baseUrl: string;
   model: string;
+  parseInstructions: string;
 }
 
 export const DEFAULT_LLM_SETTINGS: LLMSettings = {
   apiKey: '',
   baseUrl: 'https://api.openai.com/v1',
   model: 'gpt-5.6-luna',
+  parseInstructions: '',
 };

@@ -70,6 +70,22 @@
   box-sizing: border-box;
 }
 
+.textarea {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #888;
+}
+
 .dangerBtn {
   padding: 12px 20px;
   border: 1px solid #e53935;

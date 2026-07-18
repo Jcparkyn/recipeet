@@ -60,6 +60,12 @@ Equipment:
 
 Return only valid JSON, no markdown fences, no extra text.`;
 
+function buildInstructions(settings: LLMSettings): string {
+  const extra = settings.parseInstructions?.trim();
+  if (!extra) return SYSTEM_PROMPT;
+  return `${SYSTEM_PROMPT}\n\nAdditional instructions from the user:\n${extra}`;
+}
+
 const ingredientSchema = z.object({
   name: z.string().min(1),
   quantity: z.coerce.number().optional(),
@@ -111,7 +117,7 @@ export class OpenAIParser implements RecipeParser {
 
     const agent = new Agent({
       name: 'Recipe Parser',
-      instructions: SYSTEM_PROMPT,
+      instructions: buildInstructions(settings),
       model,
       outputType: recipeOutputSchema,
     });

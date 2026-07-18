@@ -58,6 +58,24 @@ export default function Settings() {
         </section>
 
         <section class={styles.section}>
+          <h2 class={styles.sectionTitle}>Recipe Parsing</h2>
+
+          <label class={styles.label}>
+            Parsing Instructions
+            <textarea
+              class={styles.textarea}
+              value={settings().parseInstructions}
+              onInput={(e) => update('parseInstructions', e.currentTarget.value)}
+              placeholder="e.g. Always convert quantities to metric, prefer Australian ingredient names…"
+              rows={4}
+            />
+            <span class={styles.hint}>
+              Extra instructions given to the model when parsing recipes.
+            </span>
+          </label>
+        </section>
+
+        <section class={styles.section}>
           <h2 class={styles.sectionTitle}>Data</h2>
           <button
             class={styles.dangerBtn}

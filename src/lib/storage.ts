@@ -31,7 +31,7 @@ export const [progresses, setProgress] = createStore<RecipeProgress[]>(
 );
 
 export const [settings, setInternalSettings] = createSignal<LLMSettings>(
-  loadJson(SETTINGS_KEY, DEFAULT_LLM_SETTINGS),
+  { ...DEFAULT_LLM_SETTINGS, ...loadJson<Partial<LLMSettings>>(SETTINGS_KEY, {}) },
 );
 
 export function setSettings(s: LLMSettings) {
