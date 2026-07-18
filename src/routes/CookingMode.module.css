@@ -208,6 +208,28 @@
   margin-left: 4px;
 }
 
+.stepNotes {
+  display: block;
+  color: #999;
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+.stepNotesToggle {
+  display: block;
+  color: #999;
+  font-weight: 400;
+  margin-top: 4px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.stepInstruction.done .stepNotes,
+.stepInstruction.done .stepNotesToggle {
+  text-decoration: none;
+  color: #bbb;
+}
+
 .footer {
   display: flex;
   align-items: center;

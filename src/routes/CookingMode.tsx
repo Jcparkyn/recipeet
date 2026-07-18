@@ -51,6 +51,19 @@ export default function CookingMode() {
   });
 
   const [completed, setCompleted] = createSignal(false);
+  const [expandedNotes, setExpandedNotes] = createSignal<Set<string>>(new Set());
+
+  function toggleNotes(id: string) {
+    setExpandedNotes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   const ingredientLookup = createMemo(() => {
     const map = new Map<string, { name: string; quantity?: number; unit: string }>();
@@ -255,6 +268,26 @@ export default function CookingMode() {
                         </Show>
                         {hasTimes() && (
                           <>{(step.handsOnTime ?? 0) > 0 && <span class={styles.timeHands}>Hands-on: {step.handsOnTime}m</span>}{(step.waitTime ?? 0) > 0 && <span class={styles.timeWait}>Wait: {step.waitTime}m</span>}</>
+                        )}
+                        {step.notes && step.notes.length < 50 && (
+                          <span class={styles.stepNotes}>{step.notes}</span>
+                        )}
+                        {step.notes && step.notes.length >= 50 && (
+                          <span
+                            class={
+                              expandedNotes().has(step.id)
+                                ? styles.stepNotes
+                                : styles.stepNotesToggle
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleNotes(step.id);
+                            }}
+                          >
+                            {expandedNotes().has(step.id)
+                              ? step.notes
+                              : 'notes'}
+                          </span>
                         )}
                       </span>
                     </li>

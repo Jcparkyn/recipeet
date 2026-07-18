@@ -47,7 +47,6 @@ export interface Section {
   title: string;
   order: number;
   steps: Step[];
-  notes?: string;
   images?: string[];
 }
 
@@ -56,6 +55,7 @@ export interface Step {
   label?: string;
   instruction: string;
   segments?: InstructionSegment[];
+  notes?: string;
   handsOnTime?: number;
   waitTime?: number;
 }

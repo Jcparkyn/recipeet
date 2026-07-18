@@ -38,7 +38,9 @@ Timing:
 - Estimate the time each step takes. Include "handsOnTime" (active work in minutes, e.g. chopping, stirring) and "waitTime" (passive time in minutes, e.g. baking, simmering, resting). Both are numbers in minutes, omit if zero. Examples: dicing chicken is {"handsOnTime": 3}; frying is {"handsOnTime": 2, "waitTime": 8}.
 
 Notes:
-- Include any general notes about a section (tips, warnings, explanations) in the "notes" field. Omit or leave empty if there are no notable notes. This should NOT include a summary or duration/timing info, just extra useful details from the recipe.
+- Include any general notes about a step (tips, warnings, explanations) in the "notes" field. Omit or leave empty if there are no notable notes. This should NOT include a summary or duration/timing info, just extra useful details from the recipe.
+
+Images:
 - Identify up to 2 relevant image URLs from the original page content (the markdown may contain ![alt](url) references) that illustrate each section. Include them in an "images" array on each section object. Only include images directly useful for understanding that specific section. Use an empty array if no relevant images exist.
 
 Quantities:
@@ -69,6 +71,7 @@ const ingredientSchema = z.object({
 const stepSchema = z.object({
   label: z.string().optional(),
   instruction: z.string().min(1),
+  notes: z.string().optional(),
   handsOnTime: z.number().nonnegative().optional(),
   waitTime: z.number().nonnegative().optional(),
 });
@@ -76,7 +79,6 @@ const stepSchema = z.object({
 const sectionSchema = z.object({
   title: z.string().min(1),
   order: z.number(),
-  notes: z.string().optional(),
   images: z.array(z.string()).optional(),
   steps: z.array(stepSchema).min(1),
 });
@@ -141,7 +143,6 @@ function validateAndTransform(raw: RawRecipe): ParseResult {
     id: String(nextId++),
     title: section.title || `Section ${si + 1}`,
     order: section.order ?? si,
-    notes: section.notes || undefined,
     images: (section.images || []).filter((u) => u.length > 0).slice(0, 2),
     steps: (section.steps || []).map((step) => {
       const instruction = step.instruction || '';
@@ -152,6 +153,7 @@ function validateAndTransform(raw: RawRecipe): ParseResult {
         label: step.label || undefined,
         instruction,
         segments,
+        notes: step.notes || undefined,
         handsOnTime: step.handsOnTime && step.handsOnTime > 0 ? step.handsOnTime : undefined,
         waitTime: step.waitTime && step.waitTime > 0 ? step.waitTime : undefined,
       };
