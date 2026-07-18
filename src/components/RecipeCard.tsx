@@ -1,5 +1,6 @@
 import { createSignal } from 'solid-js';
 import type { Recipe } from '@/lib/types';
+import { formatMinutes, totalHandsOnTime } from '@/lib/time';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import styles from './RecipeCard.module.css';
 
@@ -11,6 +12,7 @@ interface Props {
 
 export default function RecipeCard(props: Props) {
   const date = () => new Date(props.recipe.createdAt).toLocaleDateString();
+  const handsOnTime = () => totalHandsOnTime(props.recipe.content);
   const [showDelete, setShowDelete] = createSignal(false);
 
   return (
@@ -19,7 +21,9 @@ export default function RecipeCard(props: Props) {
         <div class={styles.body}>
           <h3 class={styles.title}>{props.recipe.content.title}</h3>
           <span class={styles.meta}>
-            {props.recipe.content.originalServings} servings &middot; {date()}
+            {props.recipe.content.originalServings} servings
+            {handsOnTime() > 0 && <> &middot; {formatMinutes(handsOnTime())}</>} &middot;{' '}
+            {date()}
           </span>
         </div>
         <button
