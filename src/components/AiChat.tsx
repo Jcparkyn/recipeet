@@ -402,7 +402,10 @@ export default function AiChat(props: AiChatProps) {
           disabled={isConnecting()}
           aria-label={isListening() ? 'Stop listening' : 'Start voice input'}
         >
-          <Show when={isUserSpeaking()}>
+          <Show
+            when={isUserSpeaking()}
+            fallback={<span class={styles.voiceBtnMic} />}
+          >
             <span class={styles.voiceBtnDots}>
               <span class={styles.voiceBtnDot} />
               <span class={styles.voiceBtnDot} />
