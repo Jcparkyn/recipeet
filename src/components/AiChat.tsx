@@ -218,6 +218,8 @@ export default function AiChat(props: AiChatProps) {
             },
           },
         },
+// Don't store audio recordings locally
+        historyStoreAudio: false,
       });
 
       session.on('history_updated', (history: RealtimeItem[]) => {
