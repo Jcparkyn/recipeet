@@ -274,6 +274,14 @@
   font-weight: 400;
 }
 
+.leftovers {
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  max-width: 550px;
+}
+
 .footer {
   display: flex;
   gap: 12px;

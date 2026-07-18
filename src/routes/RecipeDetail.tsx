@@ -343,6 +343,15 @@ export default function RecipeDetail() {
           }}
         </Show>
 
+        <Show when={recipe.content.leftovers}>
+          {(text) => (
+            <section>
+              <h2 class={styles.sectionTitle}>Leftovers</h2>
+              <p class={styles.leftovers}>{text()}</p>
+            </section>
+          )}
+        </Show>
+
       </main>
 
       <AiChat recipeId={recipe.id} isCookMode={false}>

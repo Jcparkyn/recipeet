@@ -4,6 +4,7 @@ export interface RecipeContent {
   ingredients: Ingredient[];
   sections: Section[];
   equipment?: Equipment[];
+  leftovers?: string;
 }
 
 export interface Equipment {

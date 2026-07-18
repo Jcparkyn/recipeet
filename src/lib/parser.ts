@@ -58,6 +58,11 @@ Equipment:
 - Include colanders, sieves, strainers, rolling pins.
 - Use the "notes" field only if there's something special about the equipment (e.g. "lined with baking paper", "lightly greased").
 
+Leftovers:
+- Include a "leftovers" field: plain text advice on what to do with leftovers (e.g. how many days it keeps in the fridge, whether it freezes well, how to reheat).
+- If the source recipe contains leftover/storage information, use it with minimal edits (keep all detail from the recipe).
+- Otherwise, use your judgement based on the ingredients and cooking method to write 1-2 short sentences, and append " (inferred from recipe)" at the end.
+
 Return only valid JSON, no markdown fences, no extra text.`;
 
 function buildInstructions(settings: LLMSettings): string {
@@ -101,6 +106,7 @@ const recipeOutputSchema = z.object({
   ingredients: z.array(ingredientSchema).min(1),
   sections: z.array(sectionSchema).min(1),
   equipment: z.array(equipmentSchema).optional(),
+  leftovers: z.string().optional(),
 });
 
 type RawRecipe = z.infer<typeof recipeOutputSchema>;
@@ -175,7 +181,7 @@ function validateAndTransform(raw: RawRecipe): ParseResult {
   sections.sort((a, b) => a.order - b.order);
 
   return {
-    content: { title: raw.title, originalServings: raw.originalServings ?? 1, ingredients, sections, equipment: equipment.length > 0 ? equipment : undefined },
+    content: { title: raw.title, originalServings: raw.originalServings ?? 1, ingredients, sections, equipment: equipment.length > 0 ? equipment : undefined, leftovers: raw.leftovers?.trim() || undefined },
     warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
