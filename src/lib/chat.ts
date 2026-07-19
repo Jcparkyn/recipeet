@@ -6,7 +6,6 @@ import { scaleQuantity, formatQuantity } from './scaling';
 
 export interface ChatTools {
   setStep: (stepId: string, checked: boolean) => void;
-  completeSection: (sectionIndex: number) => void;
   goToSection: (sectionIndex: number) => void;
   getProgress: () => RecipeProgress;
 }
@@ -80,18 +79,6 @@ export function createRecipeAgent(
       execute: async ({ stepId, checked }) => {
         tools.setStep(stepId, checked);
         return 'Step updated.';
-      },
-    }),
-
-    tool({
-      name: 'complete_section',
-      description: 'Mark all steps in a section as complete.',
-      parameters: z.object({
-        sectionIndex: z.number().int().min(0).describe('Zero-based index of the section'),
-      }),
-      execute: async ({ sectionIndex }) => {
-        tools.completeSection(sectionIndex);
-        return 'Section completed.';
       },
     }),
 

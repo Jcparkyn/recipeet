@@ -172,17 +172,6 @@ export default function AiChat(props: AiChatProps) {
             else current.delete(stepId);
             updateProgress(props.recipeId, (pp) => { pp.checkedSteps = [...current]; });
           },
-          completeSection(sectionIndex) {
-            const cr = recipes.find((r2) => r2.id === props.recipeId);
-            if (!cr) return;
-            const section = cr.content.sections[sectionIndex];
-            if (!section) return;
-            const cp = getProgress(props.recipeId);
-            if (!cp) return;
-            const current = new Set(cp.checkedSteps);
-            for (const step of section.steps) current.add(step.id);
-            updateProgress(props.recipeId, (pp) => { pp.checkedSteps = [...current]; });
-          },
           goToSection(sectionIndex) {
             updateProgress(props.recipeId, (pp) => { pp.currentCookingSection = sectionIndex; });
           },
