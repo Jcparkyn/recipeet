@@ -189,7 +189,6 @@ export default function AiChat(props: AiChatProps) {
             };
           },
         },
-        props.isCookMode,
       );
 
       session = new RealtimeSession(agent, {

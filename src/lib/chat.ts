@@ -55,7 +55,7 @@ Guidelines:
 - Ingredient quantities in the recipe are already scaled — use them directly, do not recalculate.
 - Do not repeat the full recipe unless asked.
 - If the user seems confused or stuck, offer helpful guidance based on the recipe sections.
-- In cook mode, you can navigate between sections using go_to_section if needed.
+- You can navigate between sections using go_to_section if needed.
 - No formatting (bold, **, etc) - just plain text.
 `;
 }
@@ -64,11 +64,10 @@ export function createRecipeAgent(
   recipe: Recipe,
   progress: RecipeProgress,
   tools: ChatTools,
-  isCookMode: boolean,
 ): RealtimeAgent {
   const instructions = buildSystemPrompt(recipe, progress.currentServings);
 
-  const systemTools = [
+  const toolsList = [
     tool({
       name: 'update_step',
       description: 'Mark a step as checked (done) or unchecked.',
@@ -97,23 +96,23 @@ export function createRecipeAgent(
         });
       },
     }),
-  ];
 
-  const goToSectionTool = tool({
-    name: 'go_to_section',
-    description: 'Navigate to a specific section.',
-    parameters: z.object({
-      sectionIndex: z.number().int().min(0).describe('Zero-based index of the section'),
+    tool({
+      name: 'go_to_section',
+      description: 'Navigate to a specific section.',
+      parameters: z.object({
+        sectionIndex: z.number().int().min(0).describe('Zero-based index of the section'),
+      }),
+      execute: async ({ sectionIndex }) => {
+        tools.goToSection(sectionIndex);
+        return `Navigated to section ${sectionIndex}.`;
+      },
     }),
-    execute: async ({ sectionIndex }) => {
-      tools.goToSection(sectionIndex);
-      return `Navigated to section ${sectionIndex}.`;
-    },
-  });
+  ];
 
   return new RealtimeAgent({
     name: 'Cooking Assistant',
     instructions,
-    tools: isCookMode ? [...systemTools, goToSectionTool] : systemTools,
+    tools: toolsList,
   });
 }
