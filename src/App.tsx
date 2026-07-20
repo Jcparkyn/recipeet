@@ -6,6 +6,7 @@ import ImportRecipe from '@/routes/ImportRecipe';
 import RecipeDetail from '@/routes/RecipeDetail';
 import CookingMode from '@/routes/CookingMode';
 import Settings from '@/routes/Settings';
+import RecipeShell from '@/components/RecipeShell';
 
 function ErrorFallback(err: Error, reset: () => void) {
   return (
@@ -24,8 +25,10 @@ export default function App() {
           <Route path="/" component={RecipeList} />
           <Route path="/import" component={ImportRecipe} />
           <Route path="/settings" component={Settings} />
-          <Route path="/recipe/:id" component={RecipeDetail} />
-          <Route path="/recipe/:id/cook" component={CookingMode} />
+          <Route path="/recipe/:id" component={RecipeShell}>
+            <Route path="/" component={RecipeDetail} />
+            <Route path="/cook" component={CookingMode} />
+          </Route>
         </Router>
       </ErrorBoundary>
     </div>

@@ -1,9 +1,9 @@
-import { createMemo, createSignal, Show, For } from 'solid-js';
+import { createMemo, createSignal, onMount, Show, For } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, updateProgress } from '@/lib/storage';
 import { scaleQuantity, formatQuantity } from '@/lib/scaling';
 import { getToggledDisplay, toQuantity } from '@/lib/conversions';
-import AiChat from '@/components/AiChat';
+import { useAiChatBottomBar } from '@/components/RecipeShell';
 import styles from './CookingMode.module.css';
 
 export default function CookingMode() {
@@ -144,6 +144,43 @@ export default function CookingMode() {
       </div>
     );
   }
+
+  const { setExtras, setCookMode } = useAiChatBottomBar();
+
+  onMount(() => {
+    setCookMode(true);
+    setExtras(
+      <div class={styles.navBar}>
+        <button
+          class={styles.navBtn}
+          classList={{ [styles.disabled]: isFirstSection() }}
+          onClick={prev}
+          disabled={isFirstSection()}
+        >
+        ❮
+        </button>
+        <div class={styles.dots}>
+          <For each={sections()}>
+            {(_, i) => (
+              <button
+                class={styles.dot}
+                classList={{ [styles.active]: i() === currentIdx() }}
+                onClick={() => goTo(i())}
+                aria-label={`Go to section ${i() + 1}`}
+              />
+            )}
+          </For>
+        </div>
+        <button
+          class={styles.navBtn}
+          classList={{ [styles.primary]: isLastSection() }}
+          onClick={next}
+        >
+          {isLastSection() ? '✓' : '❯'}
+        </button>
+      </div>,
+    );
+  });
 
   return (
     <Show when={!completed()} fallback={
@@ -307,38 +344,6 @@ export default function CookingMode() {
             </Show>
           </div>
         </main>
-
-        <AiChat recipeId={r.id} isCookMode={true}>
-          <div class={styles.navBar}>
-            <button
-              class={styles.navBtn}
-              classList={{ [styles.disabled]: isFirstSection() }}
-              onClick={prev}
-              disabled={isFirstSection()}
-            >
-            ❮
-            </button>
-            <div class={styles.dots}>
-              <For each={sections()}>
-                {(_, i) => (
-                  <button
-                    class={styles.dot}
-                    classList={{ [styles.active]: i() === currentIdx() }}
-                    onClick={() => goTo(i())}
-                    aria-label={`Go to section ${i() + 1}`}
-                  />
-                )}
-              </For>
-            </div>
-            <button
-              class={styles.navBtn}
-              classList={{ [styles.primary]: isLastSection() }}
-              onClick={next}
-            >
-              {isLastSection() ? '✓' : '❯'}
-            </button>
-          </div>
-        </AiChat>
       </div>
     </Show>
   );

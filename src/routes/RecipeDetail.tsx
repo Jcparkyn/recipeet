@@ -1,4 +1,4 @@
-import { createMemo, createSignal, Show } from 'solid-js';
+import { createMemo, createSignal, onMount, Show } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import { recipes, getProgress, removeRecipe, updateRecipe, updateProgress } from '@/lib/storage';
 import type { Ingredient } from '@/lib/types';
@@ -6,7 +6,7 @@ import { scaleQuantity, formatQuantity } from '@/lib/scaling';
 import { getToggledDisplay, toQuantity } from '@/lib/conversions';
 import ServingsScaler from '@/components/ServingsScaler';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import AiChat from '@/components/AiChat';
+import { useAiChatBottomBar } from '@/components/RecipeShell';
 import styles from './RecipeDetail.module.css';
 
 interface GroupedIngredient {
@@ -161,6 +161,24 @@ export default function RecipeDetail() {
     }
     if (other.length > 0) result.push({ category: 'Other', items: other });
     return result;
+  });
+
+  const { setExtras, setCookMode } = useAiChatBottomBar();
+
+  onMount(() => {
+    setCookMode(false);
+    setExtras(
+      <>
+        <Show when={hasProgress()}>
+          <button class={styles.btnReset} onClick={() => setShowReset(true)}>
+            Reset
+          </button>
+        </Show>
+        <button class={styles.btn} onClick={() => navigate(`/recipe/${recipe.id}/cook`)}>
+          Start Cooking
+        </button>
+      </>,
+    );
   });
 
   return (
@@ -355,23 +373,6 @@ export default function RecipeDetail() {
         </Show>
 
       </main>
-
-      <AiChat recipeId={recipe.id} isCookMode={false}>
-        <Show when={hasProgress()}>
-          <button
-            class={styles.btnReset}
-            onClick={() => setShowReset(true)}
-          >
-            Reset
-          </button>
-        </Show>
-        <button
-          class={styles.btn}
-          onClick={() => navigate(`/recipe/${recipe.id}/cook`)}
-        >
-          Start Cooking
-        </button>
-      </AiChat>
 
       {showDelete() && (
         <ConfirmDialog
